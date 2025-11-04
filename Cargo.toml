@@ -1,0 +1,24 @@
+[package]
+name = "opentelemetry-capnp"
+version = "0.1.0"
+description = "Exporter for the OpenTelemetry Collector"
+readme = "README.md"
+categories = [
+    "development-tools::debugging",
+    "development-tools::profiling",
+    "asynchronous",
+]
+keywords = ["opentelemetry", "capnp", "logging", "tracing", "metrics"]
+license = "Apache-2.0"
+edition = "2021"
+rust-version = "1.75.0"
+autotests = false
+autobenches = false
+
+
+[dependencies]
+
+[dev-dependencies]
+
+[features]
+
