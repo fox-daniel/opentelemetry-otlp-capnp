@@ -2,9 +2,9 @@ use opentelemetry::trace::{TraceContextExt, Tracer};
 use opentelemetry::KeyValue;
 use opentelemetry::{global, InstrumentationScope};
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
-use opentelemetry_otlp::{LogExporter, MetricExporter, SpanExporter};
-use opentelemetry_sdk::logs::SdkLoggerProvider;
-use opentelemetry_sdk::metrics::SdkMeterProvider;
+use opentelemetry_capnp::SpanExporter;
+// use opentelemetry_sdk::logs::SdkLoggerProvider;
+// use opentelemetry_sdk::metrics::SdkMeterProvider;
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use opentelemetry_sdk::Resource;
 use std::error::Error;
@@ -35,33 +35,33 @@ fn init_traces() -> SdkTracerProvider {
         .build()
 }
 
-fn init_metrics() -> SdkMeterProvider {
-    let exporter = MetricExporter::builder()
-        .with_tonic()
-        .build()
-        .expect("Failed to create metric exporter");
+// fn init_metrics() -> SdkMeterProvider {
+//     let exporter = MetricExporter::builder()
+//         .with_tonic()
+//         .build()
+//         .expect("Failed to create metric exporter");
 
-    SdkMeterProvider::builder()
-        .with_periodic_exporter(exporter)
-        .with_resource(get_resource())
-        .build()
-}
+//     SdkMeterProvider::builder()
+//         .with_periodic_exporter(exporter)
+//         .with_resource(get_resource())
+//         .build()
+// }
 
-fn init_logs() -> SdkLoggerProvider {
-    let exporter = LogExporter::builder()
-        .with_tonic()
-        .build()
-        .expect("Failed to create log exporter");
+// fn init_logs() -> SdkLoggerProvider {
+//     let exporter = LogExporter::builder()
+//         .with_tonic()
+//         .build()
+//         .expect("Failed to create log exporter");
 
-    SdkLoggerProvider::builder()
-        .with_resource(get_resource())
-        .with_batch_exporter(exporter)
-        .build()
-}
+//     SdkLoggerProvider::builder()
+//         .with_resource(get_resource())
+//         .with_batch_exporter(exporter)
+//         .build()
+// }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
-    let logger_provider = init_logs();
+    // let logger_provider = init_logs();
 
     // Create a new OpenTelemetryTracingBridge using the above LoggerProvider.
     let otel_layer = OpenTelemetryTracingBridge::new(&logger_provider);
@@ -113,14 +113,14 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
     // shutdown on it when application ends.
     global::set_tracer_provider(tracer_provider.clone());
 
-    let meter_provider = init_metrics();
+    // let meter_provider = init_metrics();
     // Set the global meter provider using a clone of the meter_provider.
     // Setting global meter provider is required if other parts of the application
     // uses global::meter() or global::meter_with_version() to get a meter.
     // Cloning simply creates a new reference to the same meter provider. It is
     // important to hold on to the meter_provider here, so as to invoke
     // shutdown on it when application ends.
-    global::set_meter_provider(meter_provider.clone());
+    // global::set_meter_provider(meter_provider.clone());
 
     let common_scope_attributes = vec![KeyValue::new("scope-key", "scope-value")];
     let scope = InstrumentationScope::builder("basic")
@@ -129,16 +129,16 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
         .build();
 
     let tracer = global::tracer_with_scope(scope.clone());
-    let meter = global::meter_with_scope(scope);
+    // let meter = global::meter_with_scope(scope);
 
-    let counter = meter
-        .u64_counter("test_counter")
-        .with_description("a simple counter for demo purposes.")
-        .with_unit("my_unit")
-        .build();
-    for _ in 0..10 {
-        counter.add(1, &[KeyValue::new("test_key", "test_value")]);
-    }
+    // let counter = meter
+    //     .u64_counter("test_counter")
+    //     .with_description("a simple counter for demo purposes.")
+    //     .with_unit("my_unit")
+    //     .build();
+    // for _ in 0..10 {
+    //     counter.add(1, &[KeyValue::new("test_key", "test_value")]);
+    // }
 
     tracer.in_span("Main operation", |cx| {
         let span = cx.span();
@@ -165,13 +165,13 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
         shutdown_errors.push(format!("tracer provider: {e}"));
     }
 
-    if let Err(e) = meter_provider.shutdown() {
-        shutdown_errors.push(format!("meter provider: {e}"));
-    }
+    // if let Err(e) = meter_provider.shutdown() {
+    //     shutdown_errors.push(format!("meter provider: {e}"));
+    // }
 
-    if let Err(e) = logger_provider.shutdown() {
-        shutdown_errors.push(format!("logger provider: {e}"));
-    }
+    // if let Err(e) = logger_provider.shutdown() {
+    //     shutdown_errors.push(format!("logger provider: {e}"));
+    // }
 
     // Return an error if any shutdown failed
     if !shutdown_errors.is_empty() {
