@@ -8,21 +8,17 @@ use opentelemetry_sdk::{
     trace::{SpanData, SpanExporter},
 };
 
-// TODO:
-// Channel is probably from Cap'n Proto codegen
-//
-
 pub(crate) struct CapnpTracesClient {
     inner: Option<ClientInner>,
     retry_policy: RetryPolicy,
-    #[allow(dead_code)]
+    // #[allow(dead_code)]
     // <allow dead> would be removed once we support set_resource for metrics.
-    resource: opentelemetry_proto::transform::common::tonic::ResourceAttributesWithSchema,
+    // resource: opentelemetry_capnp::transform::common::capnp::ResourceAttributesWithSchema,
 }
 
 struct ClientInner {
     client: TraceServiceClient<Channel>,
-    interceptor: Mutex<BoxInterceptor>,
+    // interceptor: Mutex<BoxInterceptor>,
 }
 
 impl fmt::Debug for CapnpTracesClient {
@@ -46,7 +42,7 @@ impl SpanExporter for CapnpTracesClient {
         }
     }
 
-    fn set_resource(&mut self, resource: &opentelemetry_sdk::Resource) {
-        self.resource = resource.into();
-    }
+    // fn set_resource(&mut self, resource: &opentelemetry_sdk::Resource) {
+    //     self.resource = resource.into();
+    // }
 }
