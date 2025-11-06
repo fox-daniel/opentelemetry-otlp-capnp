@@ -1,5 +1,6 @@
 use crate::retry::RetryPolicy;
 use core::fmt;
+use optentelemetry_capnp::collector::trace::v1::trace_service_client::TraceServiceClient;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -17,7 +18,7 @@ pub(crate) struct CapnpTracesClient {
 }
 
 struct ClientInner {
-    client: TraceServiceClient<Channel>,
+    client: TraceServiceClient,
     // interceptor: Mutex<BoxInterceptor>,
 }
 
