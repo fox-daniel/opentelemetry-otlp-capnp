@@ -1,0 +1,33 @@
+[package]
+name = "opentelemetry-otlp-capnp"
+version = "0.1.0"
+description = "Exporter for the OpenTelemetry Collector"
+readme = "README.md"
+categories = [
+    "development-tools::debugging",
+    "development-tools::profiling",
+    "asynchronous",
+]
+keywords = ["opentelemetry", "capnp", "logging", "tracing", "metrics"]
+license = "Apache-2.0"
+edition = "2021"
+rust-version = "1.75.0"
+
+[dependencies]
+opentelemetry = { workspace = true} 
+opentelemetry_sdk = { workspace = true} 
+thiserror = { workspace = true} 
+tokio = { workspace = true, features = ["sync", "rt"], optional = true }
+opentelemetry-capnp = { workspace = true }
+
+[[example]]
+name = "basic-otlp"
+path = "examples/basic-otlp"
+
+[[example]]
+name = "basic-otlp-trace"
+path = "examples/basic-otlp-trace"
+
+[[example]]
+name = "basic-capnp"
+path = "examples/basic-capnp"

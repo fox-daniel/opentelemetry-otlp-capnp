@@ -1,0 +1,33 @@
+[package]
+name = "opentelemetry-capnp"
+version = "0.1.0"
+description = "Cap'n Proto schema, generated files and transformations."
+readme = "README.md"
+categories = [
+    "development-tools::debugging",
+    "development-tools::profiling",
+    "asynchronous",
+]
+keywords = ["opentelemetry", "capnp", "capabilities", "otlp", "logging", "tracing", "metrics"]
+license = "Apache-2.0"
+edition = "2021"
+rust-version = "1.75.0"
+autotests = false
+autobenches = false
+
+[lib]
+doctest = false
+bench = false
+
+[[test]]
+name = "capnp_build"
+path = "tests/capnp_build.rs"
+
+
+# crates used to generate rs files
+
+
+
+[dependencies]
+opentelemetry = { workspace = true}
+opentelemetry_sdk = { workspace = true}
