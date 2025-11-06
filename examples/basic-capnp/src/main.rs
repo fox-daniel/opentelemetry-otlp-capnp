@@ -2,7 +2,7 @@ use opentelemetry::trace::{TraceContextExt, Tracer};
 use opentelemetry::KeyValue;
 use opentelemetry::{global, InstrumentationScope};
 use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
-use opentelemetry_capnp::SpanExporter;
+use opentelemetry_otlp_capnp::SpanExporter;
 // use opentelemetry_sdk::logs::SdkLoggerProvider;
 // use opentelemetry_sdk::metrics::SdkMeterProvider;
 use opentelemetry_sdk::trace::SdkTracerProvider;

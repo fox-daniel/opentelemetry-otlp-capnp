@@ -1,5 +1,5 @@
 [package]
-name = "opentelemetry-capnp"
+name = "opentelemetry-otlp-capnp"
 version = "0.1.0"
 description = "Exporter for the OpenTelemetry Collector"
 readme = "README.md"
