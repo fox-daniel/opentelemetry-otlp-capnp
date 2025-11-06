@@ -67,6 +67,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "basic-otlp-trace"
+version = "0.1.0"
+dependencies = [
+ "opentelemetry",
+ "opentelemetry-appender-tracing",
+ "opentelemetry-otlp",
+ "opentelemetry_sdk",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "bitflags"
 version = "2.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -2,6 +2,7 @@
 members = [
     ".",
     "examples/basic-otlp",
+    "examples/basic-otlp-trace",
     "examples/basic-capnp",
 ]
 resolver = "2"
@@ -37,6 +38,10 @@ tokio = {version = "1.48.0", features = ["sync", "rt"], optional = true }
 [[example]]
 name = "basic-otlp"
 path = "examples/basic-otlp"
+
+[[example]]
+name = "basic-otlp-trace"
+path = "examples/basic-otlp-trace"
 
 [[example]]
 name = "basic-capnp"
