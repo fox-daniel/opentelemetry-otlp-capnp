@@ -19,8 +19,7 @@ pub(crate) struct CapnpTracesClient {
 }
 
 struct ClientInner {
-    client: TraceServiceClient,
-    // interceptor: Mutex<BoxInterceptor>,
+    client: trace_service_client::TraceServiceClient,
 }
 
 impl fmt::Debug for CapnpTracesClient {
@@ -47,4 +46,22 @@ impl SpanExporter for CapnpTracesClient {
     // fn set_resource(&mut self, resource: &opentelemetry_sdk::Resource) {
     //     self.resource = resource.into();
     // }
+}
+
+pub mod trace_service_client {
+    #![allow(
+        unused_variables,
+        dead_code,
+        missing_docs,
+        clippy::wildcard_imports,
+        clippy::let_unit_value
+    )]
+    use opentelemetry_capnp::trace_service_capnp;
+    /// Service that can be used to push spans between one Application instrumented with
+    /// OpenTelemetry and a collector, or between a collector and a central collector (in this
+    /// case spans are sent/received to/from multiple Applications).
+    #[derive(Debug, Clone)]
+    pub struct TraceServiceClient {
+        inner: trace_service_capnp::Client,
+    }
 }
