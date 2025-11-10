@@ -1,7 +1,7 @@
 @0x8fa361a9b01b7dc0;
 
-# import "opentelemetry/proto/common/v1/common.proto";
-# import "opentelemetry/proto/resource/v1/resource.proto";
+using Common = import "../../common/v1/common.capnp";
+using Resource = import "../../resource/v1/resource.capnp";
 
 # TracesData represents the traces data that can be stored in a persistent storage,
 # OR can be embedded by other protocols that transfer OTLP traces data but do
@@ -19,19 +19,18 @@ struct TracesData {
   # one element. Intermediary nodes that receive data from multiple origins
   # typically batch the data before forwarding further and in that case this
   # array will contain multiple elements.
-  resource_spans @0 List(ResourceSpans);
+  resourceSpans @0 :List(ResourceSpans);
 }
 
 # A collection of ScopeSpans from a Resource.
 struct ResourceSpans {
-  reserved @999 :Void;
   
   # The resource for the spans in this message.
   # If this field is not set then no resource info is known.
-  resource @0 :opentelemetry.capnp.resource.v1.Resource;
+  resource @0 :Resource.Resource;
 
   # A list of ScopeSpans that originate from a resource.
-  scope_spans @1 :List(ScopeSpans);
+  scopeSpans @1 :List(ScopeSpans);
 
   # The Schema URL, if known. This is the identifier of the Schema that the resource data
   # is recorded in. Notably, the last part of the URL path is the version number of the
@@ -39,7 +38,7 @@ struct ResourceSpans {
   # https:#opentelemetry.io/docs/specs/otel/schemas/#schema-url
   # This schema_url applies to the data in the "resource" field. It does not apply
   # to the data in the "scope_spans" field which have their own schema_url field.
-  schema_url @2 :Text;
+  schemaUrl @2 :Text;
 }
 
 # A collection of Spans produced by an InstrumentationScope.
@@ -47,7 +46,7 @@ struct ScopeSpans {
   # The instrumentation scope information for the spans in this message.
   # Semantically when InstrumentationScope isn't set, it is equivalent with
   # an empty instrumentation scope name (unknown).
-  scope @0 :opentelemetry.proto.common.v1.InstrumentationScope;
+  scope @0 :Common.InstrumentationScope;
 
   # A list of Spans that originate from an instrumentation scope.
   spans @1 :List(Span);
@@ -58,7 +57,7 @@ struct ScopeSpans {
   # https:#opentelemetry.io/docs/specs/otel/schemas/#schema-url
   # This schema_url applies to the data in the "scope" field and all spans and span
   # events in the "spans" field.
-  schema_url @2 :Text;
+  schemaUrl @2 :Text;
 }
 
 # A Span represents a single operation performed by a single component of the system.
@@ -71,7 +70,7 @@ struct Span {
   # is zero-length and thus is also invalid).
   #
   # This field is required.
-  trace_id @0 :Data;
+  traceId @0 :Data;
 
   # A unique identifier for a span within a trace, assigned when the span
   # is created. The ID is an 8-byte array. An ID with all zeroes OR of length
@@ -79,16 +78,16 @@ struct Span {
   # is zero-length and thus is also invalid).
   #
   # This field is required.
-  span_id @1 :Data
+  spanId @1 :Data;
 
   # trace_state conveys information about request position in multiple distributed tracing graphs.
   # It is a trace_state in w3c-trace-context format: https:#www.w3.org/TR/trace-context/#tracestate-header
   # See also https:#github.com/w3c/distributed-tracing for more details about this field.
-  trace_state @2 :Text;
+  traceState @2 :Text;
 
   # The `span_id` of this span's parent span. If this is a root span, then this
   # field must be empty. The ID is an 8-byte array.
-  parent_span_id @3 :Data;
+  parentSpanId @3 :Data;
 
   # Flags, a bit field.
   #
@@ -131,29 +130,29 @@ struct Span {
   enum SpanKind {
     # Unspecified. Do NOT use as default.
     # Implementations MAY assume SpanKind to be INTERNAL when receiving UNSPECIFIED.
-    SPAN_KIND_UNSPECIFIED @0;
+    spanKindUnspecified @0;
 
     # Indicates that the span represents an internal operation within an application,
     # as opposed to an operation happening at the boundaries. Default value.
-    SPAN_KIND_INTERNAL @1;
+    spanKindInternal @1;
 
     # Indicates that the span covers server-side handling of an RPC or other
     # remote network request.
-    SPAN_KIND_SERVER @2;
+    spanKindServer @2;
 
     # Indicates that the span describes a request to some remote service.
-    SPAN_KIND_CLIENT @3;
+    spanKindClient @3;
 
     # Indicates that the span describes a producer sending a message to a broker.
     # Unlike CLIENT and SERVER, there is often no direct critical path latency relationship
     # between producer and consumer spans. A PRODUCER span ends when the message was accepted
     # by the broker while the logical processing of the message might span a much longer time.
-    SPAN_KIND_PRODUCER @4;
+    spanKindProducer @4;
 
     # Indicates that the span describes consumer receiving a message from a broker.
     # Like the PRODUCER kind, there is often no direct critical path latency relationship
     # between producer and consumer spans.
-    SPAN_KIND_CONSUMER @5;
+    spanKindConsumer @5;
   }
 
   # Distinguishes between spans generated in a particular context. For example,
@@ -167,7 +166,7 @@ struct Span {
   # Value is UNIX Epoch time in nanoseconds since 00:00:00 UTC on 1 January 1970.
   #
   # This field is semantically required and it is expected that end_time >= start_time.
-  start_time_unix_nano @6 :UInt64;
+  startTimeUnixNano @6 :UInt64;
 
   # The end time of the span. On the client side, this is the time
   # kept by the local machine where the span execution ends. On the server side, this
@@ -175,7 +174,7 @@ struct Span {
   # Value is UNIX Epoch time in nanoseconds since 00:00:00 UTC on 1 January 1970.
   #
   # This field is semantically required and it is expected that end_time >= start_time.
-  end_time_unix_nano @7 :UInt64;
+  endTimeUnixNano @7 :UInt64;
 
   # A collection of key/value pairs. Note, global attributes
   # like server name can be set using the resource API. Examples of attributes:
@@ -188,18 +187,18 @@ struct Span {
   # Attribute keys MUST be unique (it is not allowed to have more than one
   # attribute with the same key).
   # The behavior of software that receives duplicated keys can be unpredictable.
-  attributes @8 :List(pentelemetry.proto.common.v1.KeyValue); 
+  attributes @8 :List(Common.KeyValue); 
 
   # The number of attributes that were discarded. Attributes
   # can be discarded because their keys are too long or because there are too many
   # attributes. If this value is 0, then no attributes were dropped.
-  dropped_attributes_count @9 :UInt32;
+  droppedAttributesCount @9 :UInt32;
 
   # Event is a time-stamped annotation of the span, consisting of user-supplied
   # text description and key-value pairs.
   struct Event {
     # The time the event occurred.
-    time_unix_nano @0 UInt64;
+    timeUnixNano @0 :UInt64;
 
     # The name of the event.
     # This field is semantically required to be set to non-empty string.
@@ -209,11 +208,11 @@ struct Span {
     # Attribute keys MUST be unique (it is not allowed to have more than one
     # attribute with the same key).
     # The behavior of software that receives duplicated keys can be unpredictable.
-    attributes @2 :List(opentelemetry.proto.common.v1.KeyValue attributesi);
+    attributes @2 :List(Common.KeyValue);
 
     # The number of dropped attributes. If the value is 0,
     # then no attributes were dropped.
-    dropped_attributes_count @3 :UInt32;
+    droppedAttributesCount @3 :UInt32;
   }
 
   # A collection of Event items.
@@ -221,7 +220,7 @@ struct Span {
 
   # The number of dropped events. If the value is 0, then no
   # events were dropped.
-  dropped_events_count @11 :UInt32;
+  droppedEventsCount @11 :UInt32;
 
   # A pointer from the current span to another span in the same trace or in a
   # different trace. For example, this can be used in batching operations,
@@ -230,23 +229,23 @@ struct Span {
   struct Link {
     # A unique identifier of a trace that this linked span is part of. The ID is a
     # 16-byte array.
-    trace_id @0 :Data;
+    traceId @0 :Data;
 
     # A unique identifier for the linked span. The ID is an 8-byte array.
-    span_id @1 :Data;
+    spanId @1 :Data;
 
     # The trace_state associated with the link.
-    trace_state @2 :Text;
+    traceState @2 :Text;
 
     # A collection of attribute key/value pairs on the link.
     # Attribute keys MUST be unique (it is not allowed to have more than one
     # attribute with the same key).
     # The behavior of software that receives duplicated keys can be unpredictable.
-    attributes @3 :List(opentelemetry.proto.common.v1.KeyValue);
+    attributes @3 :List(Common.KeyValue);
 
     # The number of dropped attributes. If the value is 0,
     # then no attributes were dropped.
-    dropped_attributes_count @4 :UInt32;
+    droppedAttributesCount @4 :UInt32;
 
     # Flags, a bit field.
     #
@@ -274,7 +273,7 @@ struct Span {
 
   # The number of dropped links after the maximum size was
   # enforced. If this value is 0, then no links were dropped.
-  dropped_links_count @13 :UInt32;
+  droppedLinksCount @13 :UInt32;
 
   # An optional final status for this span. Semantically when Status isn't set, it means
   # span's status code is unset, i.e. assume STATUS_CODE_UNSET (code = 0).
@@ -299,10 +298,10 @@ struct Status {
     ok @1;
     # The Span contains an error.
     error @2;
-  };
+  }
 
   # The status code.
-  code StatusCode @2;
+  code @2 :StatusCode;
 }
 
 # SpanFlags represents constants used to interpret the
