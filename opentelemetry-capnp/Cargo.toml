@@ -29,5 +29,6 @@ path = "tests/capnp_build.rs"
 
 
 [dependencies]
+capnp = "0.23"
 opentelemetry = { workspace = true}
 opentelemetry_sdk = { workspace = true}
