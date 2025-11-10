@@ -51,7 +51,6 @@ pub mod trace_service_capnp {
         "/opentelemetry/capnp/collector/trace/v1/trace_service_capnp.rs"
     ));
 }
-
 pub use common_capnp::*;
 pub use resource_capnp::*;
 pub use trace_capnp::*;
