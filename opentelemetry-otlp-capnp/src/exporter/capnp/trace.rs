@@ -1,6 +1,7 @@
 use crate::retry::RetryPolicy;
 use core::fmt;
-use optentelemetry_capnp::collector::trace::v1::trace_service_client::TraceServiceClient;
+// use optentelemetry_capnp::collector::trace::v1::trace_service_client::TraceServiceClient;
+use opentelemetry_capnp::capnp::trace_capnp;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 

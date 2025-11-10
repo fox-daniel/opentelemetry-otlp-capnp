@@ -8,7 +8,7 @@
 #[rustfmt::skip]
 #[allow(warnings)]
 #[doc(hidden)]
-mod capnp;
+pub mod capnp;
 
 // #[cfg(feature = "gen-tonic-messages")]
 // pub use proto::tonic;
