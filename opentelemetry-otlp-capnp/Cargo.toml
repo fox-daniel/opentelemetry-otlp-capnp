@@ -17,7 +17,7 @@ rust-version = "1.75.0"
 opentelemetry = { workspace = true} 
 opentelemetry_sdk = { workspace = true} 
 thiserror = { workspace = true} 
-tokio = { workspace = true, features = ["sync", "rt"], optional = true }
+tokio = { workspace = true, features = ["sync", "rt"] }
 opentelemetry-capnp = { workspace = true }
 
 [[example]]
