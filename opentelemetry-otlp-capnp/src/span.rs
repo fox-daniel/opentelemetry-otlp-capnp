@@ -3,19 +3,19 @@
 //! Defines a [SpanExporter] to send trace data via an extended
 //! OpenTelemetry Protocol using Cap'n Proto.
 
-use std::fmt::Debug;
 use futures::io::AsyncReadExt;
-use opentelemetry_sdk::error::OTelSdkResult;
+use opentelemetry_sdk::error::{OTelSdkError, OTelSdkResult};
 use opentelemetry_sdk::trace::SpanData;
+use std::fmt::Debug;
+
+use opentelemetry_capnp::trace_service;
 
 use crate::exporter::capnp::trace::CapnpTracesClient;
-use crate::{ExporterBuildError, ShutDown};
 use crate::{
     exporter::capnp::{CapnpExporterBuilder, HasCapnpConfig},
     CapnpExporterBuilderSet,
 };
-
-use crate::{exporter::HasExportConfig, NoExporterBuilderSet};
+use crate::{ExporterBuildError, ShutDown};
 
 use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
@@ -30,37 +30,30 @@ pub const OTEL_EXPORTER_CAPNP_TRACES_TIMEOUT: &str = "OTEL_EXPORTER_CAPNP_TRACES
 pub const OTEL_EXPORTER_CAPNP_TRACES_COMPRESSION: &str = "OTEL_EXPORTER_CAPNP_TRACES_COMPRESSION";
 pub const OTEL_EXPORTER_CAPNP_TRACES_HEADERS: &str = "OTEL_EXPORTER_CAPNP_TRACES_HEADERS";
 
-
+/// CAPNP exporter that sends tracing data
+///
 /// Forwards SpanData over a tokio channel to the thread dedicated to
 /// a Cap'n Proto client for further export.
 ///
-/// This has no parallel in opentelemetry-otlp using Prost and Tonic.
-/// It is required for Cap'n Proto becuase the Cap'n Proto SpanExporter
+/// The internals do not parallel opentelemetry-otlp using Prost and Tonic.
+/// The change is required for Cap'n Proto because the Cap'n Proto SpanExporter
 /// is not Send. The Cap'n Proto RPC client used to export SpanData
 /// is placed on a dedicated thread and all SpanData is sent to it
 /// for export using CapnpForwardingCliet.
-struct CapnpForwardingClient {
+#[derive(Debug)]
+pub struct SpanExporter {
     tx_export: tokio::sync::mpsc::UnboundedSender<Vec<SpanData>>,
     tx_shutdown: tokio::sync::mpsc::UnboundedSender<ShutDown>,
 }
 
-/// CAPNP exporter that sends tracing data
-#[derive(Debug)]
-pub struct SpanExporter {
-    client: SupportedTransportClient,
-    // tx_export: tokio::sync::mpsc::UnboundedSender<Vec<SpanData>>,
-    // tx_shutdown: tokio::sync::mpsc::UnboundedSender<ShutDown>,
-}
-
-#[derive(Debug)]
-enum SupportedTransportClient {
-    Capnp(crate::exporter::capnp::trace::CapnpTracesClient),
-}
+// #[derive(Debug)]
+// enum SupportedTransportClient {
+//     Capnp(crate::exporter::capnp::trace::CapnpTracesClient),
+// }
 
 impl SpanExporter {
     pub fn new(endpoint: String) -> Self {
-        let (tx_export, rx_export) = unbounded_channel::<Vec<SpanData>
-    >();
+        let (tx_export, rx_export) = unbounded_channel::<Vec<SpanData>>();
         let (tx_shutdown, rx_shutdown) = unbounded_channel();
 
         std::thread::spawn(move || {
@@ -72,7 +65,7 @@ impl SpanExporter {
             let local = LocalSet::new();
 
             local.block_on(&rt, async {
-                let addr = endpoint.parse().expect("valide socket address");
+                let addr: std::net::SocketAddr = endpoint.parse().expect("valid socket address");
                 let stream = tokio::net::TcpStream::connect(&addr)
                     .await
                     .expect("connected to address");
@@ -89,7 +82,7 @@ impl SpanExporter {
                 ));
 
                 let mut rpc_system = RpcSystem::new(rpc_network, None);
-                let client: trace_service_capnp::trace_service::Client =
+                let client: trace_service::Client =
                     rpc_system.bootstrap(rpc_twoparty_capnp::Side::Server);
 
                 tokio::task::spawn_local(rpc_system);
@@ -97,17 +90,15 @@ impl SpanExporter {
                 export_loop(client, rx_export, rx_shutdown).await;
             });
         });
-        // construct supported_transport_client inner client from tx_export and tx_shutdown
-        let supported_transport_client= SupportedTransportClient::Capnp(CapnpTracesClient {
-            inner: ,
-            retry_policy: ,
-        })
-        SpanExporter { client: supported_transport_client   }
+        SpanExporter {
+            tx_export,
+            tx_shutdown,
+        }
     }
 }
 
 async fn export_loop(
-    client: trace_service_capnp::trace_service::Client,
+    client: trace_service::Client,
     mut rx_export: UnboundedReceiver<Vec<SpanData>>,
     mut rx_shutdown: UnboundedReceiver<ShutDown>,
 ) {
@@ -129,19 +120,20 @@ async fn export_loop(
 }
 
 async fn export_batch(
-    client: &trace_service_capnp::trace_service::Client,
+    client: &trace_service::Client,
     batch: Vec<SpanData>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut request = client.export_request();
     // implement the request
-    let response = request.send().promise.await?;
     Ok(())
 }
 
 impl opentelemetry_sdk::trace::SpanExporter for SpanExporter {
     async fn export(&self, batch: Vec<SpanData>) -> OTelSdkResult {
-        match &self.client {
-            SupportedTransportClient::Capnp(client) => client.export(batch).await,
+        match self.tx_export.send(batch) {
+            Ok(()) => Ok(()),
+            Err(_) => Err(OTelSdkError::InternalFailure(
+                "Failed to send over MPSC to Cap'n Proto Exporter Thread".to_owned(),
+            )),
         }
     }
 }
