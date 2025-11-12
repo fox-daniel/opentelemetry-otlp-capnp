@@ -29,6 +29,9 @@ use tokio::task::LocalSet;
 pub struct CapnpSpanExporter {
     tx_export: UnboundedSender<Vec<SpanData>>,
     tx_shutdown: UnboundedSender<()>,
+        // Track thread handle for clean shutdown?
+    //_thread_handle: Arc<Mutex<Option<thread::JoinHandle<()>>>>,
+
 }
 
 impl CapnpSpanExporter {
@@ -111,30 +114,6 @@ async fn export_batch(
     let response = request.send().promise.await?;
     Ok(())
 }
-```
-
-(older) Basic design:
-
-```rust
-pub struct CapnpSpanExporter {
-    tx_export: tokio::sync::mpsc::UnboundedSender<Vec<SpanData>>,
-    tx_shutdown: tokio::sync::mpsc::UnboundedSender<ShutDown>,
-    // Track thread handle for clean shutdown
-    _thread_handle: Arc<Mutex<Option<thread::JoinHandle<()>>>>,
-}
-
-impl CapnpSpanExporter {
-    /// Creates a new Cap'n Proto span exporter.
-    /// 
-    /// This spawns a dedicated OS thread with a single Cap'n Proto client.
-    /// One exporter instance = one client = one connection to the collector.
-    /// 
-    /// Typical usage: create once during application initialization and
-    /// install in a global TracerProvider.
-    pub fn builder() -> CapnpExporterBuilder {
-        CapnpExporterBuilder::default()
-    }
-}
 
 impl Drop for CapnpSpanExporter {
     fn drop(&mut self) {
@@ -148,55 +127,6 @@ impl Drop for CapnpSpanExporter {
     }
 }
 
-impl CapnpSpanExporter {
-    pub fn new(endpoint: String) -> Self {
-        let (tx_export, rx_export) = tokio::sync::mpsc::unbounded_channel();
-        let (tx_shutdown, rx_shutdown) = tokio::sync::mpsc::unbounded_channel();
-        
-        // Spawn dedicated OS thread
-        thread::spawn(move || {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .unwrap();
-            
-            let local = tokio::task::LocalSet::new();
-            
-            local.block_on(&rt, async {
-                // Create Cap'n Proto client (lives only on this thread)
-                let client = create_capnp_client(&endpoint).await.unwrap();
-                
-                // Export task
-                tokio::task::spawn_local(export_loop(
-                    client,
-                    rx_export,
-                    rx_shutdown,
-                ));
-            });
-        });
-        
-        CapnpSpanExporter { tx_export, tx_shutdown }
-    }
-}
-
-async fn export_loop(
-    client: trace_service_capnp::trace_service::Client,
-    mut rx_export: UnboundedReceiver<ExportMessage>,
-    mut rx_shutdown: UnboundedReceiver<()>,
-) {
-    loop {
-        tokio::select! {
-            Some(ExportMessage::Batch(spans)) = rx_export.recv() => {
-                if let Err(e) = export_batch(&client, spans).await {
-                    eprintln!("Export failed: {}", e);
-                }
-            }
-            Some(()) = rx_shutdown.recv() => {
-                break;
-            }
-        }
-    }
-}
 ```
 
 The usage pattern:
