@@ -4,10 +4,11 @@ mod span;
 pub use crate::exporter::capnp::{CapnpConfig, CapnpExporterBuilder};
 pub use crate::exporter::ExporterBuildError;
 pub use crate::span::{
-    SpanExporter, SpanExporterBuilder, OTEL_EXPORTER_CAPNP_TRACES_ENDPOINT,
-    OTEL_EXPORTER_CAPNP_TRACES_TIMEOUT,
+    SpanExporter, OTEL_EXPORTER_CAPNP_TRACES_ENDPOINT, OTEL_EXPORTER_CAPNP_TRACES_TIMEOUT,
 };
 pub use exporter::ExportConfig;
+
+pub struct ShutDown;
 
 /// The communication protocol to use when exporting data.
 #[cfg_attr(feature = "serialize", derive(Deserialize, Serialize))]

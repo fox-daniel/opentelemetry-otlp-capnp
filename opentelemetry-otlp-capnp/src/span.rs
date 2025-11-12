@@ -8,7 +8,8 @@ use futures::io::AsyncReadExt;
 use opentelemetry_sdk::error::OTelSdkResult;
 use opentelemetry_sdk::trace::SpanData;
 
-use crate::ExporterBuildError;
+use crate::exporter::capnp::trace::CapnpTracesClient;
+use crate::{ExporterBuildError, ShutDown};
 use crate::{
     exporter::capnp::{CapnpExporterBuilder, HasCapnpConfig},
     CapnpExporterBuilderSet,
@@ -28,14 +29,33 @@ pub const OTEL_EXPORTER_CAPNP_TRACES_ENDPOINT: &str = "OTEL_EXPORTER_CAPNP_TRACE
 pub const OTEL_EXPORTER_CAPNP_TRACES_TIMEOUT: &str = "OTEL_EXPORTER_CAPNP_TRACES_TIMEOUT";
 pub const OTEL_EXPORTER_CAPNP_TRACES_COMPRESSION: &str = "OTEL_EXPORTER_CAPNP_TRACES_COMPRESSION";
 pub const OTEL_EXPORTER_CAPNP_TRACES_HEADERS: &str = "OTEL_EXPORTER_CAPNP_TRACES_HEADERS";
-/// CAPNP exporter that sends tracing data
-#[derive(Debug)]
-pub struct SpanExporter {
+
+
+/// Forwards SpanData over a tokio channel to the thread dedicated to
+/// a Cap'n Proto client for further export.
+///
+/// This has no parallel in opentelemetry-otlp using Prost and Tonic.
+/// It is required for Cap'n Proto becuase the Cap'n Proto SpanExporter
+/// is not Send. The Cap'n Proto RPC client used to export SpanData
+/// is placed on a dedicated thread and all SpanData is sent to it
+/// for export using CapnpForwardingCliet.
+struct CapnpForwardingClient {
     tx_export: tokio::sync::mpsc::UnboundedSender<Vec<SpanData>>,
     tx_shutdown: tokio::sync::mpsc::UnboundedSender<ShutDown>,
 }
 
-struct ShutDown;
+/// CAPNP exporter that sends tracing data
+#[derive(Debug)]
+pub struct SpanExporter {
+    client: SupportedTransportClient,
+    // tx_export: tokio::sync::mpsc::UnboundedSender<Vec<SpanData>>,
+    // tx_shutdown: tokio::sync::mpsc::UnboundedSender<ShutDown>,
+}
+
+#[derive(Debug)]
+enum SupportedTransportClient {
+    Capnp(crate::exporter::capnp::trace::CapnpTracesClient),
+}
 
 impl SpanExporter {
     pub fn new(endpoint: String) -> Self {
@@ -77,11 +97,12 @@ impl SpanExporter {
                 export_loop(client, rx_export, rx_shutdown).await;
             });
         });
-
-        SpanExporter {
-            tx_export,
-            tx_shutdown,
-        }
+        // construct supported_transport_client inner client from tx_export and tx_shutdown
+        let supported_transport_client= SupportedTransportClient::Capnp(CapnpTracesClient {
+            inner: ,
+            retry_policy: ,
+        })
+        SpanExporter { client: supported_transport_client   }
     }
 }
 
@@ -119,7 +140,8 @@ async fn export_batch(
 
 impl opentelemetry_sdk::trace::SpanExporter for SpanExporter {
     async fn export(&self, batch: Vec<SpanData>) -> OTelSdkResult {
-        &self.tx_export.send(batch)
-        Ok(())
+        match &self.client {
+            SupportedTransportClient::Capnp(client) => client.export(batch).await,
+        }
     }
 }
