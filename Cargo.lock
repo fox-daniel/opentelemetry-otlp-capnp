@@ -195,6 +195,7 @@ checksum = "65bc07b1a8bc7c85c5f2e110c476c7389b4554ba72af57d8445ea63a576b0876"
 dependencies = [
  "futures-channel",
  "futures-core",
+ "futures-executor",
  "futures-io",
  "futures-sink",
  "futures-task",
@@ -710,12 +711,15 @@ dependencies = [
 name = "opentelemetry-otlp-capnp"
 version = "0.1.0"
 dependencies = [
+ "capnp",
  "capnp-rpc",
+ "futures",
  "opentelemetry",
  "opentelemetry-capnp",
  "opentelemetry_sdk",
  "thiserror",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]
@@ -1197,6 +1201,7 @@ checksum = "2efa149fe76073d6e8fd97ef4f4eca7b67f599660115591483572e406e165594"
 dependencies = [
  "bytes",
  "futures-core",
+ "futures-io",
  "futures-sink",
  "pin-project-lite",
  "tokio",
