@@ -62,6 +62,6 @@ pub mod trace_service_client {
     /// case spans are sent/received to/from multiple Applications).
     #[derive(Clone)]
     pub struct TraceServiceClient {
-        inner: trace_service_capnp::trace_service::Client,
+        pub inner: capnp::capability::Client,
     }
 }
