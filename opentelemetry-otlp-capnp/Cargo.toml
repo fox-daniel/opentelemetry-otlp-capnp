@@ -19,6 +19,7 @@ opentelemetry_sdk = { workspace = true}
 thiserror = { workspace = true} 
 tokio = { workspace = true, features = ["sync", "rt"] }
 opentelemetry-capnp = { workspace = true }
+capnp-rpc = { workspace = true }
 
 [[example]]
 name = "basic-otlp"

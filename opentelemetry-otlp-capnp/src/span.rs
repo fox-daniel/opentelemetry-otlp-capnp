@@ -16,6 +16,10 @@ use crate::{
 
 use crate::{exporter::HasExportConfig, NoExporterBuilderSet};
 
+use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
+use tokio::task::LocalSet;
+
 /// Target to which the exporter is going to send spans, defaults to https://localhost:4317/v1/traces.
 /// Learn about the relationship between this constant and default/metrics/logs at
 /// <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/protocol/exporter.md#endpoint-urls-for-otlphttp>
@@ -27,21 +31,36 @@ pub const OTEL_EXPORTER_CAPNP_TRACES_HEADERS: &str = "OTEL_EXPORTER_CAPNP_TRACES
 /// CAPNP exporter that sends tracing data
 #[derive(Debug)]
 pub struct SpanExporter {
-    tx_export: tokio::sync::mpsc::UnboundedSender<Vec<SpanData>>,
+    tx_export: tokio::sync::mpsc::UnboundedSender<SpanBatch>,
     tx_shutdown: tokio::sync::mpsc::UnboundedSender<ShutDown>,
 }
 
+struct SpanBatch {
+    span_data: Vec<SpanData>,
+}
 struct ShutDown;
 
 impl SpanExporter {
-    pub fn builder() -> SpanExporterBuilder<NoExporterBuilderSet> {
-        SpanExporterBuilder::default()
-    }
+    pub fn new(endpoint: String) -> Self {
+        let (tx_export, rx_export) = unbounded_channel::<SpanBatch>();
+        let (tx_shutdown, rx_shutdown) = unbounded_channel();
 
-    pub(crate) fn from_capnp(client: crate::exporter::capnp::trace::CapnpTracesClient) -> Self {
-        SpanExporter {
-            client: SupportedTransportClient::Capnp(client),
-        }
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+
+            let local = LocalSet::new();
+
+            local.block_on(&rt, async {
+                let addr = endpoint.parse().expect("valide socket address");
+                let stream = tokio::net::TcpStream::connect(&addr)
+                    .await
+                    .expect("connected to address");
+                stream.set_nodelay(true).expect("no delay set");
+            })
+        });
     }
 }
 
@@ -49,12 +68,6 @@ impl opentelemetry_sdk::trace::SpanExporter for SpanExporter {
     async fn export(&self, batch: Vec<SpanData>) -> OTelSdkResult {
         match &self.client {
             SupportedTransportClient::Capnp(client) => client.export(batch).await,
-        }
-    }
-
-    fn set_resource(&mut self, resource: &opentelemetry_sdk::Resource) {
-        match &mut self.client {
-            SupportedTransportClient::Capnp(client) => client.set_resource(resource),
         }
     }
 }
