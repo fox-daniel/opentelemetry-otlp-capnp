@@ -19,13 +19,16 @@ What follows is from an exchange with Claude Desktop about the design of the Cap
 It is motivated by the TokioSpanExporter test in the `opentelemetry-sdk` crate.
 
 Basic design:
+
 ```rust
 pub struct CapnpSpanExporter {
-    tx_export: tokio::sync::mpsc::UnboundedSender<ExportMessage>,
-    tx_shutdown: tokio::sync::mpsc::UnboundedSender<()>,
+    tx_export: tokio::sync::mpsc::UnboundedSender<Vec<SpanData>>,
+    tx_shutdown: tokio::sync::mpsc::UnboundedSender<ShutDown>,
     // Track thread handle for clean shutdown
     _thread_handle: Arc<Mutex<Option<thread::JoinHandle<()>>>>,
 }
+
+struct ShutDown;
 
 impl CapnpSpanExporter {
     /// Creates a new Cap'n Proto span exporter.
