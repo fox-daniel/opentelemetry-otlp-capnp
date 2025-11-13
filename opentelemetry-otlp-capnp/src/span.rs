@@ -18,6 +18,7 @@ use opentelemetry_capnp::trace_service;
 use crate::ShutDown;
 
 use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
+use std::net::ToSocketAddrs;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::task::LocalSet;
 
@@ -56,6 +57,13 @@ impl SpanExporter {
         let (tx_export, rx_export) = unbounded_channel::<Vec<SpanData>>();
         let (tx_shutdown, rx_shutdown) = unbounded_channel();
 
+        let addr = endpoint
+            .to_socket_addrs()
+            .unwrap()
+            .next()
+            .expect("parse to socket address");
+        println!("addr: {addr}");
+
         std::thread::spawn(move || {
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
@@ -65,10 +73,11 @@ impl SpanExporter {
             let local = LocalSet::new();
 
             local.block_on(&rt, async {
-                let addr: std::net::SocketAddr = endpoint.parse().expect("valid socket address");
+                let socket = tokio::net::TcpListener::bind(&addr).await.unwrap();
                 let stream = tokio::net::TcpStream::connect(&addr)
                     .await
                     .expect("connected to address");
+                println!("stream established for exporter");
                 stream.set_nodelay(true).expect("no delay set");
 
                 let (reader, writer) =
@@ -81,6 +90,7 @@ impl SpanExporter {
                     Default::default(),
                 ));
 
+                println!("rpc network established for exporter");
                 let mut rpc_system = RpcSystem::new(rpc_network, None);
                 let client: trace_service::Client =
                     rpc_system.bootstrap(rpc_twoparty_capnp::Side::Server);
@@ -124,6 +134,7 @@ async fn export_batch(
     batch: Vec<SpanData>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // implement the request
+    println!("this would be a good time to export the batch over the wire");
     Ok(())
 }
 
