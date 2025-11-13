@@ -1,14 +1,14 @@
-use crate::retry::RetryPolicy;
-use core::fmt;
+// use crate::retry::RetryPolicy;
+// use core::fmt;
 // use opentelemetry_capnp::collector::trace::v1::{
 //     trace_service_client::TraceServiceClient, ExportTraceServiceRequest,
 // };
-use opentelemetry_sdk::{
-    error::{OTelSdkError, OTelSdkResult},
-    trace::{SpanData, SpanExporter},
-};
-use std::sync::Arc;
-use tokio::sync::Mutex;
+// use opentelemetry_sdk::{
+//     error::{OTelSdkError, OTelSdkResult},
+//     trace::{SpanData, SpanExporter},
+// };
+// use std::sync::Arc;
+// use tokio::sync::Mutex;
 
 // pub(crate) struct CapnpTracesClient {
 //     inner: Option<ClientInner>,
