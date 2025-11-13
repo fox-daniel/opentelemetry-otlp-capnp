@@ -1,6 +1,5 @@
 use crate::exporter::capnp::CapnpExporterBuilder;
 use crate::Protocol;
-use std::fmt::{Display, Formatter};
 use std::time::Duration;
 use thiserror::Error;
 
@@ -107,7 +106,7 @@ impl HasExportConfig for CapnpExporterBuilder {
 /// default protocol based on enabled features
 fn default_protocol() -> Protocol {
     match OTEL_EXPORTER_CAPNP_PROTOCOL_DEFAULT {
-        OTEL_EXPORTER_CAPNP_PROTOCOL_CAPNP => Protocol::Capnp,
+        otel_exporter_capnp_protocol_capnp => Protocol::Capnp,
         _ => Protocol::Capnp,
     }
 }
