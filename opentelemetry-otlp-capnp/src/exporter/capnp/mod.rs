@@ -1,19 +1,11 @@
 pub(crate) mod trace;
 
-use super::ExporterBuildError;
-use crate::retry::RetryPolicy;
-use crate::{ExportConfig, OTEL_EXPORTER_CAPNP_ENDPOINT};
-use opentelemetry::otel_debug;
+use crate::ExportConfig;
 /// Configuration for [capnp]
 ///
 #[derive(Debug, Default)]
 #[non_exhaustive]
 pub struct CapnpConfig {
-    /// Custom metadata entries to send to the collector.
-    // pub(crate) metadata: Option<MetadataMap>,
-    /// TLS settings for the collector endpoint.
-    #[cfg(feature = "tls")]
-    pub(crate) tls_config: Option<ClientTlsConfig>,
     // The compression algorithm to use when communicating with the collector.
     // pub(crate) compression: Option<Compression>,
     // pub(crate) channel: Option<tonic::transport::Channel>,
