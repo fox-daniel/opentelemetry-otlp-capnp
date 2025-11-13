@@ -18,7 +18,7 @@ use opentelemetry_capnp::trace_service;
 use crate::ShutDown;
 
 use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
-use std::net::ToSocketAddrs;
+use std::net::{SocketAddr, ToSocketAddrs};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::task::LocalSet;
 
@@ -53,7 +53,7 @@ pub struct SpanExporter {
 // }
 
 impl SpanExporter {
-    pub fn new(endpoint: String) -> Self {
+    pub fn new(endpoint: &SocketAddr) -> Self {
         let (tx_export, rx_export) = unbounded_channel::<Vec<SpanData>>();
         let (tx_shutdown, rx_shutdown) = unbounded_channel();
 

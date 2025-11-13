@@ -5,6 +5,7 @@ use opentelemetry_otlp_capnp::SpanExporter;
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use opentelemetry_sdk::Resource;
 use std::error::Error;
+use std::net::ToSocketAddrs;
 use std::sync::OnceLock;
 use tracing::info;
 use tracing_subscriber::prelude::*;
@@ -22,7 +23,40 @@ fn get_resource() -> Resource {
 }
 
 fn init_traces() -> SdkTracerProvider {
-    let exporter = SpanExporter::new("127.0.0.1:8080".to_string());
+    let addr = "127.0.0.1:8080".to_socket_addrs().unwrap().next().unwrap();
+    // first build a little server to receive exported span data
+    // this will eventually be put into a SpanReceiver or similar
+    std::thread::spawn(move || {
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let local = tokio::task::LocalSet::new();
+        local.block_on(&rt, async {
+            let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
+
+            loop {
+                let (stream, _) = listener.accept().await.unwrap();
+                stream.set_nodelay(true).unwrap();
+
+                tokio::task::spawn_local(async move {
+                    let (reader, writer) =
+                        tokio_util::compat::TokioAsyncReadCompatExt::compat(stream).split();
+                    let network = twoparty::VatNetwork::new(
+                        futures::io::BufReader::new(reader),
+                        futures::io::BufWriter::new(writer),
+                        rpc_twoparty_capnp::Side::Server,
+                        Default::default(),
+                    );
+
+                    // let rpc_system = RpcSystem::new(Box::new(network), Some(server_impl.clone()));
+                    // rpc_system.await.unwrap();
+                });
+            }
+        })
+    });
+
+    let exporter = SpanExporter::new(&addr);
     SdkTracerProvider::builder()
         .with_resource(get_resource())
         .with_batch_exporter(exporter)
