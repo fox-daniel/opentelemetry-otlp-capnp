@@ -10,7 +10,7 @@ use std::fmt::Debug;
 
 use opentelemetry_capnp::trace_service;
 
-use crate::exporter::capnp::trace::CapnpTracesClient;
+// use crate::exporter::capnp::trace::CapnpTracesClient;
 use crate::{
     exporter::capnp::{CapnpExporterBuilder, HasCapnpConfig},
     CapnpExporterBuilderSet,

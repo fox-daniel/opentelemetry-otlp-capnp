@@ -16,5 +16,6 @@ tokio = {version = "1", features = ["sync", "rt"] }
 tokio-util = { version = "0.7.4", features = ["compat"] }
 futures = "0.3"
 opentelemetry-capnp = { path = "opentelemetry-capnp", version = "0.1"}
+opentelemetry-otlp-capnp = { path = "opentelemetry-otlp-capnp", version = "0.1" }
 capnp = "0.23"
 capnp-rpc = "0.23"

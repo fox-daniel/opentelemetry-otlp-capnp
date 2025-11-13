@@ -22,10 +22,7 @@ fn get_resource() -> Resource {
 }
 
 fn init_traces() -> SdkTracerProvider {
-    let exporter = SpanExporter::builder()
-        .with_tonic()
-        .build()
-        .expect("Failed to create span exporter");
+    let exporter = SpanExporter::new("127.0.0.1:8080".to_string());
     SdkTracerProvider::builder()
         .with_resource(get_resource())
         .with_batch_exporter(exporter)

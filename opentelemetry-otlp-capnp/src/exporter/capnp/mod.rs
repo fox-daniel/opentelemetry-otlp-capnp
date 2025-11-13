@@ -42,22 +42,22 @@ impl HasCapnpConfig for CapnpExporterBuilder {
     }
 }
 
-impl CapnpExporterBuilder {
-    /// Build a new tonic span exporter
-    pub(crate) fn build_span_exporter(self) -> Result<crate::SpanExporter, ExporterBuildError> {
-        use crate::exporter::capnp::trace::CapnpTracesClient;
+// impl CapnpExporterBuilder {
+//     /// Build a new tonic span exporter
+//     pub(crate) fn build_span_exporter(self) -> Result<crate::SpanExporter, ExporterBuildError> {
+//         use crate::exporter::capnp::trace::CapnpTracesClient;
 
-        otel_debug!(name: "TracesCapnpChannelBuilding");
+//         otel_debug!(name: "TracesCapnpChannelBuilding");
 
-        // let (channel, interceptor, retry_policy) = self.build_channel(
-        //     crate::span::OTEL_EXPORTER_CAPNP_TRACES_ENDPOINT,
-        //     crate::span::OTEL_EXPORTER_CAPNP_TRACES_TIMEOUT,
-        //     // crate::span::OTEL_EXPORTER_CAPNP_TRACES_COMPRESSION,
-        //     crate::span::OTEL_EXPORTER_CAPNP_TRACES_HEADERS,
-        // )?;
+//         // let (channel, interceptor, retry_policy) = self.build_channel(
+//         //     crate::span::OTEL_EXPORTER_CAPNP_TRACES_ENDPOINT,
+//         //     crate::span::OTEL_EXPORTER_CAPNP_TRACES_TIMEOUT,
+//         //     // crate::span::OTEL_EXPORTER_CAPNP_TRACES_COMPRESSION,
+//         //     crate::span::OTEL_EXPORTER_CAPNP_TRACES_HEADERS,
+//         // )?;
 
-        let client = CapnpTracesClient::new(channel, retry_policy);
+//         let client = CapnpTracesClient::new(channel, retry_policy);
 
-        Ok(crate::SpanExporter::from_capnp(client))
-    }
-}
+//         Ok(crate::SpanExporter::from_capnp(client))
+//     }
+// }

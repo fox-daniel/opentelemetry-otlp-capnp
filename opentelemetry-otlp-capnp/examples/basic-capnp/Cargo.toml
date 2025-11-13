@@ -15,7 +15,7 @@ bench = false
 [dependencies]
 opentelemetry = { version = "0.31.0", features = ["trace", "metrics", "logs"] }
 opentelemetry_sdk = { version = "0.31.0", features = ["trace", "metrics", "logs"] }
-opentelemetry-otlp = { version = "0.31.0", features = ["grpc-tonic", "trace", "metrics", "logs", "internal-logs"] }
+opentelemetry-otlp-capnp = { workspace = true, version = "0.1.0"  }
 
 tokio = { version = "1", features = ["full"] }
 opentelemetry-appender-tracing = { version = "0.31.1", default-features = false }

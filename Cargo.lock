@@ -46,7 +46,7 @@ version = "0.1.0"
 dependencies = [
  "opentelemetry",
  "opentelemetry-appender-tracing",
- "opentelemetry-otlp",
+ "opentelemetry-otlp-capnp",
  "opentelemetry_sdk",
  "tokio",
  "tracing",

@@ -11,7 +11,6 @@ pub use exporter::ExportConfig;
 pub struct ShutDown;
 
 /// The communication protocol to use when exporting data.
-#[cfg_attr(feature = "serialize", derive(Deserialize, Serialize))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Protocol {
     /// Capnp protocol
