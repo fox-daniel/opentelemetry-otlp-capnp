@@ -11,11 +11,11 @@ use std::fmt::Debug;
 use opentelemetry_capnp::trace_service;
 
 // use crate::exporter::capnp::trace::CapnpTracesClient;
-use crate::{
-    exporter::capnp::{CapnpExporterBuilder, HasCapnpConfig},
-    CapnpExporterBuilderSet,
-};
-use crate::{ExporterBuildError, ShutDown};
+// use crate::{
+//     exporter::capnp::{CapnpExporterBuilder, HasCapnpConfig},
+//     CapnpExporterBuilderSet,
+// };
+use crate::ShutDown;
 
 use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
@@ -27,8 +27,8 @@ use tokio::task::LocalSet;
 pub const OTEL_EXPORTER_CAPNP_TRACES_ENDPOINT: &str = "OTEL_EXPORTER_CAPNP_TRACES_ENDPOINT";
 /// Max waiting time for the backend to process each spans batch, defaults to 10s.
 pub const OTEL_EXPORTER_CAPNP_TRACES_TIMEOUT: &str = "OTEL_EXPORTER_CAPNP_TRACES_TIMEOUT";
-pub const OTEL_EXPORTER_CAPNP_TRACES_COMPRESSION: &str = "OTEL_EXPORTER_CAPNP_TRACES_COMPRESSION";
-pub const OTEL_EXPORTER_CAPNP_TRACES_HEADERS: &str = "OTEL_EXPORTER_CAPNP_TRACES_HEADERS";
+// pub const OTEL_EXPORTER_CAPNP_TRACES_COMPRESSION: &str = "OTEL_EXPORTER_CAPNP_TRACES_COMPRESSION";
+// pub const OTEL_EXPORTER_CAPNP_TRACES_HEADERS: &str = "OTEL_EXPORTER_CAPNP_TRACES_HEADERS";
 
 /// CAPNP exporter that sends tracing data
 ///

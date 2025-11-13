@@ -1,4 +1,3 @@
-use crate::exporter::capnp::CapnpExporterBuilder;
 use crate::Protocol;
 use std::time::Duration;
 use thiserror::Error;
@@ -90,23 +89,22 @@ pub enum ExporterBuildError {
     InternalFailure(String),
 }
 
-/// Provide access to the [ExportConfig] field within the exporter builders.
-pub trait HasExportConfig {
-    /// Return a mutable reference to the [ExportConfig] within the exporter builders.
-    fn export_config(&mut self) -> &mut ExportConfig;
-}
+// /// Provide access to the [ExportConfig] field within the exporter builders.
+// pub trait HasExportConfig {
+//     /// Return a mutable reference to the [ExportConfig] within the exporter builders.
+//     fn export_config(&mut self) -> &mut ExportConfig;
+// }
 
-/// Provide [ExportConfig] access to the [CapnpExporterBuilder].
-impl HasExportConfig for CapnpExporterBuilder {
-    fn export_config(&mut self) -> &mut ExportConfig {
-        &mut self.exporter_config
-    }
-}
+// /// Provide [ExportConfig] access to the [CapnpExporterBuilder].
+// impl HasExportConfig for CapnpExporterBuilder {
+//     fn export_config(&mut self) -> &mut ExportConfig {
+//         &mut self.exporter_config
+//     }
+// }
 
 /// default protocol based on enabled features
 fn default_protocol() -> Protocol {
     match OTEL_EXPORTER_CAPNP_PROTOCOL_DEFAULT {
-        otel_exporter_capnp_protocol_capnp => Protocol::Capnp,
         _ => Protocol::Capnp,
     }
 }

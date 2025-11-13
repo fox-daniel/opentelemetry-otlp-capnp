@@ -1,6 +1,6 @@
 pub(crate) mod trace;
 
-use crate::ExportConfig;
+// use crate::ExportConfig;
 /// Configuration for [capnp]
 ///
 #[derive(Debug, Default)]
@@ -15,24 +15,24 @@ pub struct CapnpConfig {
     // pub(crate) retry_policy: Option<RetryPolicy>,
 }
 
-#[derive(Debug, Default)]
-pub struct CapnpExporterBuilder {
-    pub(crate) capnp_config: CapnpConfig,
-    pub(crate) exporter_config: ExportConfig,
-}
+// #[derive(Debug, Default)]
+// pub struct CapnpExporterBuilder {
+//     pub(crate) capnp_config: CapnpConfig,
+//     pub(crate) exporter_config: ExportConfig,
+// }
 
-/// Expose interface for modifying [CapnpConfig] fields within the exporter builders.
-pub trait HasCapnpConfig {
-    /// Return a mutable reference to the export config within the exporter builders.
-    fn capnp_config(&mut self) -> &mut CapnpConfig;
-}
+// Expose interface for modifying [CapnpConfig] fields within the exporter builders.
+// pub trait HasCapnpConfig {
+//     /// Return a mutable reference to the export config within the exporter builders.
+//     fn capnp_config(&mut self) -> &mut CapnpConfig;
+// }
 
-/// Expose interface for modifying [CapnpConfig] fields within the [CapnpExporterBuilder].
-impl HasCapnpConfig for CapnpExporterBuilder {
-    fn capnp_config(&mut self) -> &mut CapnpConfig {
-        &mut self.capnp_config
-    }
-}
+// Expose interface for modifying [CapnpConfig] fields within the [CapnpExporterBuilder].
+// impl HasCapnpConfig for CapnpExporterBuilder {
+//     fn capnp_config(&mut self) -> &mut CapnpConfig {
+//         &mut self.capnp_config
+//     }
+// }
 
 // impl CapnpExporterBuilder {
 //     /// Build a new tonic span exporter
