@@ -73,10 +73,9 @@ impl SpanExporter {
             let local = LocalSet::new();
 
             local.block_on(&rt, async {
-                let socket = tokio::net::TcpListener::bind(&addr).await.unwrap();
                 let stream = tokio::net::TcpStream::connect(&addr)
                     .await
-                    .expect("connected to address");
+                    .expect("should connect to address");
                 println!("stream established for exporter");
                 stream.set_nodelay(true).expect("no delay set");
 
