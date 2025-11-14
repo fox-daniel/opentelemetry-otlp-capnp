@@ -14,6 +14,10 @@ use tracing::info;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
 
+struct SpanReceiver;
+
+impl trace_service::Server for SpanReceiver {}
+
 fn get_resource() -> Resource {
     static RESOURCE: OnceLock<Resource> = OnceLock::new();
     RESOURCE
@@ -38,6 +42,7 @@ fn init_traces() -> SdkTracerProvider {
         local.block_on(&rt, async {
             let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
 
+            let client: trace_service::Client = capnp_rpc::new_client(SpanReceiver);
             loop {
                 let (stream, _) = listener.accept().await.unwrap();
                 stream.set_nodelay(true).unwrap();
@@ -45,17 +50,16 @@ fn init_traces() -> SdkTracerProvider {
                 tokio::task::spawn_local(async move {
                     let (reader, writer) =
                         tokio_util::compat::TokioAsyncReadCompatExt::compat(stream).split();
-                    let rpc_network = Box::new(twoparty::VatNetwork::new(
+                    let rpc_network = twoparty::VatNetwork::new(
                         futures::io::BufReader::new(reader),
                         futures::io::BufWriter::new(writer),
                         rpc_twoparty_capnp::Side::Server,
                         Default::default(),
-                    ));
+                    );
 
-                    let mut rpc_system = RpcSystem::new(rpc_network, None);
-                    let client: trace_service::Client =
-                        rpc_system.bootstrap(rpc_twoparty_capnp::Side::Server);
-                    rpc_system.await.unwrap();
+                    let rpc_system =
+                        RpcSystem::new(Box::new(rpc_network), Some(client.clone().client));
+                    tokio::task::spawn_local(rpc_system);
                 });
             }
         })
