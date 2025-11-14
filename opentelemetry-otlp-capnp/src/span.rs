@@ -123,7 +123,8 @@ async fn export_loop(
                     let _ = export_batch(&client, batch).await;
                 }
                 break;
-            }
+            },
+            else => { break;}
         }
     }
 }
