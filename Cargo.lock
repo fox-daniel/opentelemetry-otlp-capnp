@@ -48,6 +48,7 @@ dependencies = [
  "futures",
  "opentelemetry",
  "opentelemetry-appender-tracing",
+ "opentelemetry-capnp",
  "opentelemetry-otlp-capnp",
  "opentelemetry_sdk",
  "tokio",

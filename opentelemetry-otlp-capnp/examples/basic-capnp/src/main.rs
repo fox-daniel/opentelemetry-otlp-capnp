@@ -45,16 +45,16 @@ fn init_traces() -> SdkTracerProvider {
                 tokio::task::spawn_local(async move {
                     let (reader, writer) =
                         tokio_util::compat::TokioAsyncReadCompatExt::compat(stream).split();
-                    let network = twoparty::VatNetwork::new(
+                    let rpc_network = Box::new(twoparty::VatNetwork::new(
                         futures::io::BufReader::new(reader),
                         futures::io::BufWriter::new(writer),
                         rpc_twoparty_capnp::Side::Server,
                         Default::default(),
-                    );
+                    ));
 
+                    let mut rpc_system = RpcSystem::new(rpc_network, None);
                     let client: trace_service::Client =
                         rpc_system.bootstrap(rpc_twoparty_capnp::Side::Server);
-                    let rpc_system = RpcSystem::new(Box::new(network), Some(client.clone()));
                     rpc_system.await.unwrap();
                 });
             }
