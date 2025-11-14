@@ -92,7 +92,7 @@ impl SpanExporter {
                 println!("rpc network established for exporter");
                 let mut rpc_system = RpcSystem::new(rpc_network, None);
                 let client: trace_service::Client =
-                    rpc_system.bootstrap(rpc_twoparty_capnp::Side::Server);
+                    rpc_system.bootstrap(rpc_twoparty_capnp::Side::Client);
 
                 tokio::task::spawn_local(rpc_system);
 
