@@ -3,6 +3,7 @@ use futures::io::AsyncReadExt;
 use opentelemetry::trace::{TraceContextExt, Tracer};
 use opentelemetry::KeyValue;
 use opentelemetry::{global, InstrumentationScope};
+use opentelemetry_capnp::trace_service;
 use opentelemetry_otlp_capnp::SpanExporter;
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use opentelemetry_sdk::Resource;
@@ -51,8 +52,10 @@ fn init_traces() -> SdkTracerProvider {
                         Default::default(),
                     );
 
-                    // let rpc_system = RpcSystem::new(Box::new(network), Some(server_impl.clone()));
-                    // rpc_system.await.unwrap();
+                    let client: trace_service::Client =
+                        rpc_system.bootstrap(rpc_twoparty_capnp::Side::Server);
+                    let rpc_system = RpcSystem::new(Box::new(network), Some(client.clone()));
+                    rpc_system.await.unwrap();
                 });
             }
         })
