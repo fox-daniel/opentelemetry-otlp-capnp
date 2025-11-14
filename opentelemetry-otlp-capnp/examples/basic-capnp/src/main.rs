@@ -10,6 +10,7 @@ use opentelemetry_sdk::Resource;
 use std::error::Error;
 use std::net::ToSocketAddrs;
 use std::sync::OnceLock;
+use std::time::Duration;
 use tracing::info;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
@@ -41,26 +42,24 @@ fn init_traces() -> SdkTracerProvider {
         let local = tokio::task::LocalSet::new();
         local.block_on(&rt, async {
             let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
-
             let client: trace_service::Client = capnp_rpc::new_client(SpanReceiver);
+
             loop {
                 let (stream, _) = listener.accept().await.unwrap();
                 stream.set_nodelay(true).unwrap();
 
-                tokio::task::spawn_local(async move {
-                    let (reader, writer) =
-                        tokio_util::compat::TokioAsyncReadCompatExt::compat(stream).split();
-                    let rpc_network = twoparty::VatNetwork::new(
-                        futures::io::BufReader::new(reader),
-                        futures::io::BufWriter::new(writer),
-                        rpc_twoparty_capnp::Side::Server,
-                        Default::default(),
-                    );
+                let (reader, writer) =
+                    tokio_util::compat::TokioAsyncReadCompatExt::compat(stream).split();
 
-                    let rpc_system =
-                        RpcSystem::new(Box::new(rpc_network), Some(client.clone().client));
-                    tokio::task::spawn_local(rpc_system);
-                });
+                let rpc_network = twoparty::VatNetwork::new(
+                    futures::io::BufReader::new(reader),
+                    futures::io::BufWriter::new(writer),
+                    rpc_twoparty_capnp::Side::Server,
+                    Default::default(),
+                );
+
+                let rpc_system = RpcSystem::new(Box::new(rpc_network), Some(client.clone().client));
+                tokio::task::spawn_local(rpc_system);
             }
         })
     });

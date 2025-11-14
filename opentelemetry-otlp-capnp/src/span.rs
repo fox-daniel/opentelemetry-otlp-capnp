@@ -139,11 +139,10 @@ async fn export_batch(
 
 impl opentelemetry_sdk::trace::SpanExporter for SpanExporter {
     async fn export(&self, batch: Vec<SpanData>) -> OTelSdkResult {
-        match self.tx_export.send(batch) {
-            Ok(()) => Ok(()),
-            Err(_) => Err(OTelSdkError::InternalFailure(
-                "Failed to send over MPSC to Cap'n Proto Exporter Thread".to_owned(),
-            )),
-        }
+        self.tx_export.send(batch).map_err(|e| {
+            OTelSdkError::InternalFailure(format!(
+                "Failed to send over MPSC to Cap'n Proto Exporter Thread: {e}"
+            ))
+        })
     }
 }
