@@ -1,4 +1,5 @@
-use capnp_rpc::{rpc_twoparty_capnp, twoparty};
+use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
+use futures::io::AsyncReadExt;
 use opentelemetry::trace::{TraceContextExt, Tracer};
 use opentelemetry::KeyValue;
 use opentelemetry::{global, InstrumentationScope};
