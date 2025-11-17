@@ -152,6 +152,6 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
         )
         .into());
     }
-
+    tokio::time::sleep(Duration::from_secs(1)).await;
     Ok(())
 }
