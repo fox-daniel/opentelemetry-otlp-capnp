@@ -4,7 +4,7 @@
 //! OpenTelemetry Protocol using Cap'n Proto.
 
 use futures::io::AsyncReadExt;
-use opentelemetry_capnp::trace_service;
+use opentelemetry_capnp::{trace::populate_span_minimal, trace_service};
 use opentelemetry_sdk::error::{OTelSdkError, OTelSdkResult};
 use opentelemetry_sdk::trace::SpanData;
 use std::fmt::Debug;
