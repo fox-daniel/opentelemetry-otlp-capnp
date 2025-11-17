@@ -141,6 +141,8 @@ async fn export_batch(
 ) -> Result<(), Box<dyn std::error::Error>> {
     // TODO
     // implement the request
+    // TODO
+    // switch all println to writeln
     println!("this would be a good time to export the batch over the wire");
     Ok(())
 }
