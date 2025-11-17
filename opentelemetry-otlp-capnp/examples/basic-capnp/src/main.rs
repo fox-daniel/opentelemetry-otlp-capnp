@@ -3,7 +3,7 @@ use futures::io::AsyncReadExt;
 use opentelemetry::trace::{TraceContextExt, Tracer};
 use opentelemetry::KeyValue;
 use opentelemetry::{global, InstrumentationScope};
-use opentelemetry_capnp::trace_service;
+use opentelemetry_capnp::{span_export, trace_service};
 use opentelemetry_otlp_capnp::SpanExporter;
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use opentelemetry_sdk::Resource;
@@ -17,7 +17,27 @@ use tracing_subscriber::EnvFilter;
 
 struct SpanReceiver;
 
-impl trace_service::Server for SpanReceiver {}
+// impl trace_service::Server for SpanReceiver {}
+
+impl span_export::Server for SpanReceiver {
+    fn send_span_data(
+        &mut self,
+        params: span_export::SendSpanDataParams,
+        mut results: span_export::SendSpanDataResults,
+    ) -> capnp::capability::Promise<(), capnp::Error> {
+        let request = params.get()?.get_request()?;
+        let spans = request.get_spans()?;
+        writeln!(std::io::stdout(), "received {} spans", spans.len())?;
+        for span in spans.iter() {
+            writeln!(std::io::stdout(), "{span}", span)?;
+        }
+
+        let mut reply = results.get().init_reply();
+        reply.set_count(spans.len() as u16);
+
+        capnp::capabilities::Promise(Ok(()));
+    }
+}
 
 fn get_resource() -> Resource {
     static RESOURCE: OnceLock<Resource> = OnceLock::new();
