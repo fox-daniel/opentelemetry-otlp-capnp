@@ -1,4 +1,5 @@
-use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
+use capnp::capability::Promise;
+use capnp_rpc::{pry, rpc_twoparty_capnp, twoparty, RpcSystem};
 use futures::io::AsyncReadExt;
 use opentelemetry::trace::{TraceContextExt, Tracer};
 use opentelemetry::KeyValue;
@@ -8,6 +9,7 @@ use opentelemetry_otlp_capnp::SpanExporter;
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use opentelemetry_sdk::Resource;
 use std::error::Error;
+use std::io::Write;
 use std::net::ToSocketAddrs;
 use std::sync::OnceLock;
 use std::time::Duration;
@@ -21,21 +23,26 @@ struct SpanReceiver;
 
 impl span_export::Server for SpanReceiver {
     fn send_span_data(
-        &mut self,
+        self: std::rc::Rc<Self>,
         params: span_export::SendSpanDataParams,
         mut results: span_export::SendSpanDataResults,
-    ) -> capnp::capability::Promise<(), capnp::Error> {
-        let request = params.get()?.get_request()?;
-        let spans = request.get_spans()?;
-        writeln!(std::io::stdout(), "received {} spans", spans.len())?;
+    ) -> Promise<(), capnp::Error> {
+        let request = pry!(params.get());
+        let request_data = pry!(request.get_request());
+        let spans = pry!(request_data.get_spans());
+        pry!(writeln!(
+            std::io::stdout(),
+            "received {} spans",
+            spans.len()
+        ));
         for span in spans.iter() {
-            writeln!(std::io::stdout(), "{span}", span)?;
+            pry!(writeln!(std::io::stdout(), "{:#?}", span));
         }
+        pry!(writeln!(std::io::stdout(), "finished receiving spans"));
 
         let mut reply = results.get().init_reply();
         reply.set_count(spans.len() as u16);
-
-        capnp::capabilities::Promise(Ok(()));
+        Promise::ok(())
     }
 }
 
@@ -62,7 +69,8 @@ fn init_traces() -> SdkTracerProvider {
         let local = tokio::task::LocalSet::new();
         local.block_on(&rt, async {
             let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
-            let client: trace_service::Client = capnp_rpc::new_client(SpanReceiver);
+            // let client: trace_service::Client = capnp_rpc::new_client(SpanReceiver);
+            let client: span_export::Client = capnp_rpc::new_client(SpanReceiver);
 
             loop {
                 let (stream, _) = listener.accept().await.unwrap();
