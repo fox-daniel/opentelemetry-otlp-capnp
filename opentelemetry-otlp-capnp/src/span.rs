@@ -4,11 +4,14 @@
 //! OpenTelemetry Protocol using Cap'n Proto.
 
 use futures::io::AsyncReadExt;
+use opentelemetry_capnp::trace_service;
 use opentelemetry_sdk::error::{OTelSdkError, OTelSdkResult};
 use opentelemetry_sdk::trace::SpanData;
 use std::fmt::Debug;
+use std::io::Write;
 
-use opentelemetry_capnp::trace_service;
+// this is a temporary interface to get an example working
+use opentelemetry_capnp::span_export;
 
 // use crate::exporter::capnp::trace::CapnpTracesClient;
 // use crate::{
@@ -95,9 +98,11 @@ impl SpanExporter {
 
                 println!("rpc network established for exporter");
                 let mut rpc_system = RpcSystem::new(rpc_network, None);
-                let client: trace_service::Client =
-                    rpc_system.bootstrap(rpc_twoparty_capnp::Side::Server);
+                // let client: trace_service::Client =
+                //     rpc_system.bootstrap(rpc_twoparty_capnp::Side::Server);
 
+                let client: span_export::Client =
+                    rpc_system.bootstrap(rpc_twoparty_capnp::Side::Server);
                 tokio::task::spawn_local(rpc_system);
 
                 export_loop(client, rx_export, rx_shutdown).await;
@@ -111,7 +116,8 @@ impl SpanExporter {
 }
 
 async fn export_loop(
-    client: trace_service::Client,
+    // client: trace_service::Client,
+    client: span_export::Client,
     mut rx_export: UnboundedReceiver<Vec<SpanData>>,
     mut rx_shutdown: UnboundedReceiver<ShutDown>,
 ) {
@@ -136,14 +142,28 @@ async fn export_loop(
 }
 
 async fn export_batch(
-    client: &trace_service::Client,
+    // client: &trace_service::Client,
+    client: &span_export::Client,
     batch: Vec<SpanData>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // TODO
     // implement the request
     // TODO
     // switch all println to writeln
-    println!("this would be a good time to export the batch over the wire");
+    let request = client.send_span_data_request();
+    {
+        let mut span_data_builder = request.get().init_request();
+        let mut spans_builder = span_data_builder.init_spans(batch.len() as u32);
+        for (idx, span) in batch.into_iter().enumerate() {
+            let span_builder = spans_builder.reborrow().get(idx as u32);
+            populate_span_minimal(span_builder, span)?;
+        }
+    }
+
+    let response = request.send().promise.await?;
+    let reply = response.get()?.get_reply()?.get_count();
+    writeln!(std::io::stdout(), "{}", reply)?;
+    // "this would be a good time to export the batch over the wire");
     Ok(())
 }
 
