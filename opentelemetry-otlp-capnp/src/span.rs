@@ -4,7 +4,7 @@
 //! OpenTelemetry Protocol using Cap'n Proto.
 
 use futures::io::AsyncReadExt;
-use opentelemetry_capnp::{trace::populate_span_minimal, trace_service};
+use opentelemetry_capnp::{trace_service, transform::trace::populate_span_minimal};
 use opentelemetry_sdk::error::{OTelSdkError, OTelSdkResult};
 use opentelemetry_sdk::trace::SpanData;
 use std::fmt::Debug;
@@ -150,7 +150,7 @@ async fn export_batch(
     // implement the request
     // TODO
     // switch all println to writeln
-    let request = client.send_span_data_request();
+    let mut request = client.send_span_data_request();
     {
         let mut span_data_builder = request.get().init_request();
         let mut spans_builder = span_data_builder.init_spans(batch.len() as u32);
