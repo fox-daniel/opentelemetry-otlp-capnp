@@ -53,6 +53,10 @@ pub struct SpanExporter {
 // }
 
 impl SpanExporter {
+    // TODO
+    // should boot up in unconnected state and be able to cache span data
+    // when are able to connect, then do so and start exporting
+    // need to handle disconnect and cache full
     pub fn new(endpoint: &SocketAddr) -> Self {
         let (tx_export, rx_export) = unbounded_channel::<Vec<SpanData>>();
         let (tx_shutdown, rx_shutdown) = unbounded_channel();
@@ -124,6 +128,8 @@ async fn export_loop(
                 }
                 break;
             },
+            // TODO
+            // make this a graceful shutdown
             else => { break;}
         }
     }
@@ -133,6 +139,7 @@ async fn export_batch(
     client: &trace_service::Client,
     batch: Vec<SpanData>,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // TODO
     // implement the request
     println!("this would be a good time to export the batch over the wire");
     Ok(())
