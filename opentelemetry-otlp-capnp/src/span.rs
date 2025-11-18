@@ -152,7 +152,7 @@ async fn export_batch(
     // switch all println to writeln
     let mut request = client.send_span_data_request();
     {
-        let mut span_data_builder = request.get().init_request();
+        let span_data_builder = request.get().init_request();
         let mut spans_builder = span_data_builder.init_spans(batch.len() as u32);
         for (idx, span) in batch.into_iter().enumerate() {
             let span_builder = spans_builder.reborrow().get(idx as u32);
