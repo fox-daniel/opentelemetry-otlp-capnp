@@ -8,6 +8,7 @@ use opentelemetry_capnp::{trace_service, transform::trace::populate_span_minimal
 use opentelemetry_sdk::error::{OTelSdkError, OTelSdkResult};
 use opentelemetry_sdk::trace::SpanData;
 use std::fmt::Debug;
+use std::io;
 use std::io::Write;
 
 // this is a temporary interface to get an example working
@@ -69,7 +70,6 @@ impl SpanExporter {
             .unwrap()
             .next()
             .expect("parse to socket address");
-        println!("addr: {addr}");
 
         std::thread::spawn(move || {
             let rt = tokio::runtime::Builder::new_current_thread()
@@ -83,7 +83,7 @@ impl SpanExporter {
                 let stream = tokio::net::TcpStream::connect(&addr)
                     .await
                     .expect("should connect to address");
-                println!("stream established for exporter");
+                let _ = writeln!(io::stdout(), "stream established for exporter");
                 stream.set_nodelay(true).expect("no delay set");
 
                 let (reader, writer) =
@@ -96,7 +96,7 @@ impl SpanExporter {
                     Default::default(),
                 ));
 
-                println!("rpc network established for exporter");
+                let _ = writeln!(io::stdout(), "rpc network established for exporter");
                 let mut rpc_system = RpcSystem::new(rpc_network, None);
                 // let client: trace_service::Client =
                 //     rpc_system.bootstrap(rpc_twoparty_capnp::Side::Server);
@@ -125,7 +125,7 @@ async fn export_loop(
         tokio::select! {
             Some(batch) = rx_export.recv() => {
                 if let Err(e) = export_batch(&client, batch).await {
-                    eprintln!("Export failed: {}", e);
+                    let _ = writeln!(io::stdout(), "Export failed: {}", e);
                 }
             },
             Some(ShutDown) = rx_shutdown.recv() => {
@@ -146,10 +146,6 @@ async fn export_batch(
     client: &span_export::Client,
     batch: Vec<SpanData>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // TODO
-    // implement the request
-    // TODO
-    // switch all println to writeln
     let mut request = client.send_span_data_request();
     {
         let span_data_builder = request.get().init_request();
@@ -163,7 +159,6 @@ async fn export_batch(
     let response = request.send().promise.await?;
     let reply = response.get()?.get_reply()?.get_count();
     writeln!(std::io::stdout(), "{}", reply)?;
-    // "this would be a good time to export the batch over the wire");
     Ok(())
 }
 
