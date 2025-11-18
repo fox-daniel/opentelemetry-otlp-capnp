@@ -9,8 +9,8 @@ use opentelemetry_sdk::error::{OTelSdkError, OTelSdkResult};
 use opentelemetry_sdk::trace::SpanData;
 use std::fmt::Debug;
 use std::io;
-use std::io::Write;
-
+use std::io::{ErrorKind, Write};
+use std::time::Duration;
 // this is a temporary interface to get an example working
 use opentelemetry_capnp::span_export;
 
@@ -34,7 +34,7 @@ pub const OTEL_EXPORTER_CAPNP_TRACES_ENDPOINT: &str = "OTEL_EXPORTER_CAPNP_TRACE
 pub const OTEL_EXPORTER_CAPNP_TRACES_TIMEOUT: &str = "OTEL_EXPORTER_CAPNP_TRACES_TIMEOUT";
 // pub const OTEL_EXPORTER_CAPNP_TRACES_COMPRESSION: &str = "OTEL_EXPORTER_CAPNP_TRACES_COMPRESSION";
 // pub const OTEL_EXPORTER_CAPNP_TRACES_HEADERS: &str = "OTEL_EXPORTER_CAPNP_TRACES_HEADERS";
-
+pub const SPAN_EXPORTER_TIMEOUT: u64 = 30_000;
 /// CAPNP exporter that sends tracing data
 ///
 /// Forwards SpanData over a tokio channel to the thread dedicated to
@@ -55,6 +55,35 @@ pub struct SpanExporter {
 // enum SupportedTransportClient {
 //     Capnp(crate::exporter::capnp::trace::CapnpTracesClient),
 // }
+
+async fn connect_with_retry(
+    addr: &SocketAddr,
+    timeout_ms: u64,
+) -> io::Result<tokio::net::TcpStream> {
+    let mut delay = Duration::from_millis(1);
+    loop {
+        tokio::time::sleep(delay).await;
+
+        match tokio::net::TcpStream::connect(&addr).await {
+            Ok(stream) => {
+                return io::Result::Ok(stream);
+            }
+            Err(e) => {
+                let _ = writeln!(
+                    io::stdout(),
+                    "Connection attempt failed for SpanExporter: {e}"
+                );
+                if delay > Duration::from_millis(timeout_ms) {
+                    return Err(io::Error::new(
+                        ErrorKind::TimedOut,
+                        "Connection retry timeout exceeded",
+                    ));
+                }
+                delay *= 2;
+            }
+        }
+    }
+}
 
 impl SpanExporter {
     // TODO
@@ -80,10 +109,10 @@ impl SpanExporter {
             let local = LocalSet::new();
 
             local.block_on(&rt, async {
-                let stream = tokio::net::TcpStream::connect(&addr)
-                    .await
-                    .expect("should connect to address");
-                let _ = writeln!(io::stdout(), "stream established for exporter");
+                let Ok(stream) = connect_with_retry(&addr, SPAN_EXPORTER_TIMEOUT).await else {
+                    writeln!(io::stdout(), "Could not build Span Exporter").ok();
+                    return;
+                };
                 stream.set_nodelay(true).expect("no delay set");
 
                 let (reader, writer) =
@@ -134,8 +163,6 @@ async fn export_loop(
                 }
                 break;
             },
-            // TODO
-            // make this a graceful shutdown
             else => { break;}
         }
     }
