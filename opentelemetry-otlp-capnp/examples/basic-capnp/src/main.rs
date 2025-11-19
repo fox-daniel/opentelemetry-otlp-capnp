@@ -22,38 +22,8 @@ const TEST_ADDRESS: &str = "127.0.0.1:8080";
 
 struct SpanReceiver;
 
-// impl trace_service::Server for SpanReceiver {}
-
-/// Give the SpanReceiver the capability of receiving a
-/// `send_span_data` call from the client.
-///
-/// Capabilities of the server are implemented from the
-/// perspective of the client calling those capabilities.
-impl span_export::Server for SpanReceiver {
-    fn send_span_data(
-        self: std::rc::Rc<Self>,
-        params: span_export::SendSpanDataParams,
-        mut results: span_export::SendSpanDataResults,
-    ) -> Promise<(), capnp::Error> {
-        let request = pry!(params.get());
-        let request_data = pry!(request.get_request());
-        let spans = pry!(request_data.get_spans());
-        pry!(writeln!(
-            std::io::stdout(),
-            "received {} spans",
-            spans.len()
-        ));
-        for span in spans.iter() {
-            pry!(writeln!(std::io::stdout(), "{:#?}", span));
-        }
-        pry!(writeln!(std::io::stdout(), "finished receiving spans"));
-
-        let mut reply = results.get().init_reply();
-        reply.set_count(spans.len() as u16);
-        Promise::ok(())
-    }
-}
-
+/// To demonstrate using Cap'n Proto over the wire we need a receiver that
+/// can handle Cap'n Proto client requests. This is a mini-server that does that.
 impl SpanReceiver {
     fn new() -> std::io::Result<SpanReceiver> {
         let addr = TEST_ADDRESS.to_socket_addrs().unwrap().next().unwrap();
@@ -83,6 +53,38 @@ impl SpanReceiver {
             })
         });
         Ok(SpanReceiver)
+    }
+}
+
+// impl trace_service::Server for SpanReceiver {}
+
+/// Give the SpanReceiver the capability of receiving a
+/// `send_span_data` call from the client.
+///
+/// Capabilities of the server are implemented from the
+/// perspective of the client calling those capabilities.
+impl span_export::Server for SpanReceiver {
+    fn send_span_data(
+        self: std::rc::Rc<Self>,
+        params: span_export::SendSpanDataParams,
+        mut results: span_export::SendSpanDataResults,
+    ) -> Promise<(), capnp::Error> {
+        let request = pry!(params.get());
+        let request_data = pry!(request.get_request());
+        let spans = pry!(request_data.get_spans());
+        pry!(writeln!(
+            std::io::stdout(),
+            "received {} spans",
+            spans.len()
+        ));
+        for span in spans.iter() {
+            pry!(writeln!(std::io::stdout(), "{:#?}", span));
+        }
+        pry!(writeln!(std::io::stdout(), "finished receiving spans"));
+
+        let mut reply = results.get().init_reply();
+        reply.set_count(spans.len() as u16);
+        Promise::ok(())
     }
 }
 
