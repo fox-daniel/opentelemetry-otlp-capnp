@@ -78,24 +78,29 @@ impl SpanReceiver {
                     let (stream, _) = listener.accept().await.unwrap();
                     stream.set_nodelay(true).unwrap();
 
-                    let (reader, writer) =
-                        tokio_util::compat::TokioAsyncReadCompatExt::compat(stream).split();
-
-                    let rpc_network = twoparty::VatNetwork::new(
-                        futures::io::BufReader::new(reader),
-                        futures::io::BufWriter::new(writer),
-                        rpc_twoparty_capnp::Side::Server,
-                        Default::default(),
-                    );
-
-                    let rpc_system =
-                        RpcSystem::new(Box::new(rpc_network), Some(client.clone().client));
-                    tokio::task::spawn_local(rpc_system);
+                    spawn_local_rpc_system_to_handle_stream(stream, client.clone()).await;
                 }
             })
         });
         Ok(SpanReceiver)
     }
+}
+
+async fn spawn_local_rpc_system_to_handle_stream(
+    stream: tokio::net::TcpStream,
+    client: span_export::Client,
+) {
+    let (reader, writer) = tokio_util::compat::TokioAsyncReadCompatExt::compat(stream).split();
+
+    let rpc_network = twoparty::VatNetwork::new(
+        futures::io::BufReader::new(reader),
+        futures::io::BufWriter::new(writer),
+        rpc_twoparty_capnp::Side::Server,
+        Default::default(),
+    );
+
+    let rpc_system = RpcSystem::new(Box::new(rpc_network), Some(client.clone().client));
+    tokio::task::spawn_local(rpc_system);
 }
 
 fn get_resource() -> Resource {
