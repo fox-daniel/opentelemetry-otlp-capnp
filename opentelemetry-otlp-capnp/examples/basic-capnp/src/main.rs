@@ -17,6 +17,8 @@ use tracing::info;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
 
+const TEST_ADDRESS: &str = "127.0.0.1:8080";
+
 struct SpanReceiver;
 
 // impl trace_service::Server for SpanReceiver {}
@@ -58,7 +60,7 @@ fn get_resource() -> Resource {
 }
 
 fn init_traces() -> SdkTracerProvider {
-    let addr = "127.0.0.1:8080".to_socket_addrs().unwrap().next().unwrap();
+    let addr = TEST_ADDRESS.to_socket_addrs().unwrap().next().unwrap();
     // first build a little server to receive exported span data
     // this will eventually be put into a SpanReceiver or similar
     std::thread::spawn(move || {
@@ -152,6 +154,8 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
         )
         .into());
     }
+    // this keeps the process alive long enough for all telemetry to be exported;
+    // need to make this unnecessary
     tokio::time::sleep(Duration::from_secs(1)).await;
     Ok(())
 }
