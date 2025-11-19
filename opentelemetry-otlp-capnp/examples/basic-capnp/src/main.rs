@@ -9,8 +9,9 @@ use opentelemetry_otlp_capnp::SpanExporter;
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use opentelemetry_sdk::Resource;
 use std::error::Error;
+use std::io;
 use std::io::Write;
-use std::net::ToSocketAddrs;
+use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::OnceLock;
 use std::time::Duration;
 use tracing::info;
@@ -23,6 +24,11 @@ struct SpanReceiver;
 
 // impl trace_service::Server for SpanReceiver {}
 
+/// Give the SpanReceiver the capability of receiving a
+/// `send_span_data` call from the client.
+///
+/// Capabilities of the server are implemented from the
+/// perspective of the client calling those capabilities.
 impl span_export::Server for SpanReceiver {
     fn send_span_data(
         self: std::rc::Rc<Self>,
@@ -48,6 +54,50 @@ impl span_export::Server for SpanReceiver {
     }
 }
 
+impl SpanReceiver {
+    fn new() -> std::io::Result<SpanReceiver> {
+        let addr = TEST_ADDRESS.to_socket_addrs().unwrap().next().unwrap();
+        // TODO
+        // integrate into the OTEL API/SDK. There appears to be no SpanReceiver!
+        //
+        // TODO
+        // this uses the minimal span_export interface; implement the full trace_service interface.
+        std::thread::spawn(move || {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            let local = tokio::task::LocalSet::new();
+
+            local.block_on(&rt, async {
+                let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
+                // let client: trace_service::Client = capnp_rpc::new_client(SpanReceiver);
+                let client: span_export::Client = capnp_rpc::new_client(SpanReceiver);
+
+                loop {
+                    let (stream, _) = listener.accept().await.unwrap();
+                    stream.set_nodelay(true).unwrap();
+
+                    let (reader, writer) =
+                        tokio_util::compat::TokioAsyncReadCompatExt::compat(stream).split();
+
+                    let rpc_network = twoparty::VatNetwork::new(
+                        futures::io::BufReader::new(reader),
+                        futures::io::BufWriter::new(writer),
+                        rpc_twoparty_capnp::Side::Server,
+                        Default::default(),
+                    );
+
+                    let rpc_system =
+                        RpcSystem::new(Box::new(rpc_network), Some(client.clone().client));
+                    tokio::task::spawn_local(rpc_system);
+                }
+            })
+        });
+        Ok(SpanReceiver)
+    }
+}
+
 fn get_resource() -> Resource {
     static RESOURCE: OnceLock<Resource> = OnceLock::new();
     RESOURCE
@@ -59,51 +109,19 @@ fn get_resource() -> Resource {
         .clone()
 }
 
-fn init_traces() -> SdkTracerProvider {
+fn init_traces() -> io::Result<SdkTracerProvider> {
     let addr = TEST_ADDRESS.to_socket_addrs().unwrap().next().unwrap();
-    // first build a little server to receive exported span data
-    // this will eventually be put into a SpanReceiver or similar
-    std::thread::spawn(move || {
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .unwrap();
-        let local = tokio::task::LocalSet::new();
-        local.block_on(&rt, async {
-            let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
-            // let client: trace_service::Client = capnp_rpc::new_client(SpanReceiver);
-            let client: span_export::Client = capnp_rpc::new_client(SpanReceiver);
-
-            loop {
-                let (stream, _) = listener.accept().await.unwrap();
-                stream.set_nodelay(true).unwrap();
-
-                let (reader, writer) =
-                    tokio_util::compat::TokioAsyncReadCompatExt::compat(stream).split();
-
-                let rpc_network = twoparty::VatNetwork::new(
-                    futures::io::BufReader::new(reader),
-                    futures::io::BufWriter::new(writer),
-                    rpc_twoparty_capnp::Side::Server,
-                    Default::default(),
-                );
-
-                let rpc_system = RpcSystem::new(Box::new(rpc_network), Some(client.clone().client));
-                tokio::task::spawn_local(rpc_system);
-            }
-        })
-    });
 
     let exporter = SpanExporter::new(&addr);
-    SdkTracerProvider::builder()
+    Ok(SdkTracerProvider::builder()
         .with_resource(get_resource())
         .with_batch_exporter(exporter)
-        .build()
+        .build())
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
-    let tracer_provider = init_traces();
+    let tracer_provider = init_traces()?;
     global::set_tracer_provider(tracer_provider.clone());
 
     let filter_fmt = EnvFilter::new("info").add_directive("opentelemetry=debug".parse().unwrap());
@@ -120,6 +138,9 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
         .build();
 
     let tracer = global::tracer_with_scope(scope.clone());
+
+    let span_receiver =
+        SpanReceiver::new().map_err(|e| format!("Failed to build SpanReceiver: {e}"))?;
 
     tracer.in_span("Main operation", |cx| {
         let span = cx.span();
