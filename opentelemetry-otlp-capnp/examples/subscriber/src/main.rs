@@ -1,6 +1,6 @@
-use std::io::stdout;
 // use subscriber::CapnpSubscriber;
-use tracing::{event, instrument, Level};
+use tracing::instrument;
+use tracing_subscriber::fmt::format::FmtSpan;
 
 const TEST_ADDRESS: &str = "127.0.0.1:8080";
 
@@ -8,7 +8,9 @@ const TEST_ADDRESS: &str = "127.0.0.1:8080";
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     // let subscriber = CapnpSubscriber;
     // let (non_blocking, _guard) = tracing_appender::non_blocking(stdout());
-    let subscriber = tracing_subscriber::fmt().finish();
+    let subscriber = tracing_subscriber::fmt()
+        .with_span_events(FmtSpan::FULL)
+        .finish();
     tracing::subscriber::set_global_default(subscriber)?;
     let s = "17";
     say_hello(s);
@@ -17,6 +19,5 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
 
 #[instrument]
 fn say_hello(s: &str) {
-    event!(target: "say_hello", Level::INFO, "something");
     println!("hello {}", s);
 }
