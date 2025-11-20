@@ -1,5 +1,5 @@
 [package]
-name = "subscriber"
+name = "basic-subscriber"
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
@@ -7,8 +7,11 @@ rust-version = "1.81.0"
 publish = false
 autobenches = false
 
+[lib]
+path = "src/lib.rs"
+
 [[bin]]
-name = "basic-capnp"
+name = "basic-subscriber"
 path = "src/main.rs"
 bench = false
 
@@ -17,6 +20,7 @@ tokio = { version = "1", features = ["full"] }
 opentelemetry-appender-tracing = { version = "0.31.1", default-features = false }
 tracing = { version = ">=0.1.40", features = ["std"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter","registry", "std", "fmt"] }
+tracing-appender = { version = "0.2.3"}
 tokio-util = { workspace = true}
 capnp-rpc = { workspace = true }
 futures = { workspace = true }
