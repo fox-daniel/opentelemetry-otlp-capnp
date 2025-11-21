@@ -91,6 +91,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "812e12b5285cc515a9c72a5c1d3b6d46a19dac5acfef5265968c166106e31dd3"
 
 [[package]]
+name = "bulk-capnp"
+version = "0.1.0"
+dependencies = [
+ "capnp",
+ "capnp-rpc",
+ "futures",
+ "opentelemetry",
+ "opentelemetry-appender-tracing",
+ "opentelemetry-capnp",
+ "opentelemetry-otlp-capnp",
+ "opentelemetry_sdk",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

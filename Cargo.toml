@@ -5,6 +5,8 @@ members = [
     "opentelemetry-otlp-capnp/examples/basic-otlp",
     "opentelemetry-otlp-capnp/examples/basic-otlp-trace",
     "opentelemetry-otlp-capnp/examples/basic-capnp",
+    "opentelemetry-otlp-capnp/examples/bulk-capnp",
+
 ]
 resolver = "2"
 
