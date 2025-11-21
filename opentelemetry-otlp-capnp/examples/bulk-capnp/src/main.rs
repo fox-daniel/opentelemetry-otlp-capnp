@@ -1,7 +1,4 @@
-pub mod app;
-pub mod receiver;
-
-const ADDRESS: &str = "127.0.0.1:8080";
+use bulk_capnp::{app, receiver};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
