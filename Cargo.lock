@@ -92,6 +92,7 @@ dependencies = [
  "capnp-rpc",
  "futures",
  "opentelemetry-appender-tracing",
+ "opentelemetry-capnp",
  "tokio",
  "tokio-util",
  "tracing",

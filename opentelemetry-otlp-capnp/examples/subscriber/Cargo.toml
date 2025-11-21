@@ -25,3 +25,5 @@ tokio-util = { workspace = true}
 capnp-rpc = { workspace = true }
 futures = { workspace = true }
 capnp.workspace = true
+opentelemetry-capnp.workspace= true
+opentelemetry-sdk.workspace = true
