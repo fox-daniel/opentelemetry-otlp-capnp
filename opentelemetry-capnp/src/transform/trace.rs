@@ -11,6 +11,7 @@ pub fn populate_span_minimal(
     builder.set_trace_id(&span.span_context.trace_id().to_bytes());
     builder.set_span_id(&span.span_context.span_id().to_bytes());
     builder.set_name(&span.name);
+    builder.set_parent_span_id(&span.parent_span_id.to_bytes());
 
     // Timestamps
     let start = span.start_time.duration_since(UNIX_EPOCH)?.as_nanos() as u64;
