@@ -77,7 +77,7 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
 async fn top_level_function() {
     let mut set = JoinSet::new();
 
-    for i in 0..5 {
+    for i in 0..1000 {
         set.spawn(
             async move {
                 writeln!(io::stdout(), "hi from task {i}").ok();
@@ -96,7 +96,7 @@ async fn top_level_function() {
 
 #[instrument]
 async fn inner_function(i: u64) {
-    let dur = (i + 1) * 100 - 60;
+    let dur = (i + 1) * 10;
     tokio::time::sleep(Duration::from_millis(dur)).await;
     info!("i slept for {dur}ms");
 }
