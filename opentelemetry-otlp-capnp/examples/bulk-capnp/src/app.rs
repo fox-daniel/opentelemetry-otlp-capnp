@@ -9,7 +9,9 @@ use std::io::Write;
 use std::net::ToSocketAddrs;
 use std::sync::OnceLock;
 use std::time::Duration;
-use tracing::info;
+use tokio::task::JoinSet;
+use tracing::instrument::WithSubscriber;
+use tracing::{info, info_span, instrument, Instrument};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
 
@@ -23,15 +25,23 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::id()
     )
     .ok();
+
+    // Set up telemetry
     let tracer_provider = init_traces()?;
     global::set_tracer_provider(tracer_provider.clone());
+
+    let tracer = global::tracer("my-app");
+    let otel_layer = tracing_opentelemetry::layer().with_tracer(tracer);
 
     let filter_fmt = EnvFilter::new("info").add_directive("opentelemetry=debug".parse().unwrap());
     let fmt_layer = tracing_subscriber::fmt::layer()
         .with_thread_names(true)
         .with_filter(filter_fmt);
 
-    tracing_subscriber::registry().with(fmt_layer).init();
+    tracing_subscriber::registry()
+        .with(fmt_layer)
+        .with(otel_layer)
+        .init();
 
     let common_scope_attributes = vec![KeyValue::new("scope-key", "scope-value")];
     let scope = InstrumentationScope::builder("basic")
@@ -39,26 +49,9 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_attributes(common_scope_attributes)
         .build();
 
-    let tracer = global::tracer_with_scope(scope.clone());
-
-    tracer.in_span("Main operation", |cx| {
-        let span = cx.span();
-        span.add_event(
-            "Nice operation!".to_string(),
-            vec![KeyValue::new("bogons", 100)],
-        );
-        span.set_attribute(KeyValue::new("another.key", "yes"));
-
-        info!(name: "my-event-inside-span", target: "my-target", "hello from {}. My price is {}. I am also inside a Span!", "banana", 2.99);
-
-        tracer.in_span("Sub operation...", |cx| {
-            let span = cx.span();
-            span.set_attribute(KeyValue::new("another.key", "yes"));
-            span.add_event("Sub span event", vec![]);
-        });
-    });
-
-    info!(name: "my-event", target: "my-target", "hello from {}. My price is {}", "apple", 1.99);
+    let _tracer = global::tracer_with_scope(scope.clone());
+    // begin app logic
+    top_level_function().await;
 
     // Collect all shutdown errors
     let mut shutdown_errors = Vec::new();
@@ -78,6 +71,34 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // need to make this unnecessary
     tokio::time::sleep(Duration::from_secs(1)).await;
     Ok(())
+}
+
+#[instrument(name = "app top level function")]
+async fn top_level_function() {
+    let mut set = JoinSet::new();
+
+    for i in 0..5 {
+        set.spawn(
+            async move {
+                writeln!(io::stdout(), "hi from task {i}").ok();
+                inner_function(i as u64).await;
+            }
+            .instrument(info_span!("spawned task", task_id = i)),
+        );
+    }
+
+    while let Some(result) = set.join_next().await {
+        if let Err(e) = result {
+            writeln!(io::stdout(), "Task Error: {e}").ok();
+        }
+    }
+}
+
+#[instrument]
+async fn inner_function(i: u64) {
+    let dur = (i + 1) * 100 - 60;
+    tokio::time::sleep(Duration::from_millis(dur)).await;
+    info!("i slept for {dur}ms");
 }
 
 fn init_traces() -> io::Result<SdkTracerProvider> {

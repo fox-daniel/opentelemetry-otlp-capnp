@@ -57,7 +57,7 @@ impl span_export::Server for SpanReceiver {
         self: std::rc::Rc<Self>,
         params: span_export::SendSpanDataParams,
         mut results: span_export::SendSpanDataResults,
-    ) -> Promise<(), capnp::Error> {
+    ) -> impl futures::Future<Output = Result<(), capnp::Error>> + 'static {
         let request = pry!(params.get());
         let request_data = pry!(request.get_request());
         let spans = pry!(request_data.get_spans());
