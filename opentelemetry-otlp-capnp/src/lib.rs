@@ -1,8 +1,10 @@
 mod exporter;
+mod receiver;
 pub mod retry;
 mod span;
 pub use crate::exporter::capnp::CapnpConfig;
 pub use crate::exporter::ExporterBuildError;
+pub use crate::receiver::SpanReceiver;
 pub use crate::span::{
     SpanExporter, OTEL_EXPORTER_CAPNP_TRACES_ENDPOINT, OTEL_EXPORTER_CAPNP_TRACES_TIMEOUT,
 };
