@@ -168,6 +168,10 @@ async fn export_loop(
     }
 }
 
+// TODO
+// - add retry with exponential backoff
+// - group spans by resource and scope
+// - put resource spans as message into a Request that includes metadata, extensions, and the message
 async fn export_batch(
     // client: &trace_service::Client,
     client: &span_export::Client,
