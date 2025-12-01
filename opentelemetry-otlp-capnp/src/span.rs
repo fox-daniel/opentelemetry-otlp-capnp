@@ -91,6 +91,7 @@ impl SpanExporter {
     // when are able to connect, then do so and start exporting
     // need to handle disconnect and cache full
     pub fn new(endpoint: &SocketAddr) -> Self {
+        // switch to bounded channels; careful to not have channel-loops
         let (tx_export, rx_export) = unbounded_channel::<Vec<SpanData>>();
         let (tx_shutdown, rx_shutdown) = unbounded_channel();
 
@@ -152,12 +153,14 @@ async fn export_loop(
 ) {
     loop {
         tokio::select! {
+            // does dropping recv cause data loss? cancel safety
             Some(batch) = rx_export.recv() => {
                 if let Err(e) = export_batch(&client, batch).await {
                     let _ = writeln!(io::stdout(), "Export failed: {}", e);
                 }
             },
             Some(ShutDown) = rx_shutdown.recv() => {
+                // close channel so noone can send: close then flush
                 while let Ok(batch) = rx_export.try_recv() {
                     let _ = export_batch(&client, batch).await;
                 }
@@ -172,6 +175,7 @@ async fn export_loop(
 // - add retry with exponential backoff
 // - group spans by resource and scope
 // - put resource spans as message into a Request that includes metadata, extensions, and the message
+// - need to push responses into async tasks and return Success or Error for SpanExporter export
 async fn export_batch(
     // client: &trace_service::Client,
     client: &span_export::Client,
@@ -186,10 +190,11 @@ async fn export_batch(
             populate_span_minimal(span_builder, span)?;
         }
     }
+    // consider dropping promise for open loop; don't want buffer in channel to fill up if receiver is slow
 
-    let response = request.send().promise.await?;
-    let reply = response.get()?.get_reply()?.get_count();
-    writeln!(std::io::stdout(), "{}", reply)?;
+    let _response = request.send().promise.await?;
+    // let reply = response.get()?.get_reply()?.get_count();
+    // writeln!(std::io::stdout(), "{}", reply)?;
     Ok(())
 }
 
