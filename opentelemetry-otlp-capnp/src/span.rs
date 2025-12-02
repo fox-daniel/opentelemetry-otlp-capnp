@@ -4,7 +4,7 @@
 //! OpenTelemetry Protocol using Cap'n Proto.
 
 use futures::io::AsyncReadExt;
-use opentelemetry_capnp::{trace_service, transform::trace::populate_span_minimal};
+use opentelemetry_capnp::{trace_service, transform::trace::populate_span};
 use opentelemetry_sdk::error::{OTelSdkError, OTelSdkResult};
 use opentelemetry_sdk::trace::SpanData;
 use std::fmt::Debug;
@@ -51,7 +51,6 @@ pub const CAPNP_EXPORTER_RPC_TRACES_TIMEOUT: u64 = 10;
 /// The change is required for Cap'n Proto because the Cap'n Proto SpanExporter
 /// is not Send. The Cap'n Proto RPC client used to export SpanData
 /// is placed on a dedicated thread and all SpanData is sent to it
-/// for export using CapnpForwardingCliet.
 #[derive(Debug)]
 pub struct SpanExporter {
     tx_export: tokio::sync::mpsc::Sender<Vec<SpanData>>,
@@ -208,7 +207,7 @@ async fn export_batch(
         let mut spans_builder = span_data_builder.init_spans(batch.len() as u32);
         for (idx, span) in batch.into_iter().enumerate() {
             let span_builder = spans_builder.reborrow().get(idx as u32);
-            populate_span_minimal(span_builder, span)?;
+            populate_span(span_builder, span)?;
         }
     }
     // need to make OTEL complient by returning SUCCESS or FAILURE to SpanExporter.export()
