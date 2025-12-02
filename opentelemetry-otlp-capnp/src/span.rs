@@ -41,6 +41,7 @@ pub const SPAN_EXPORTER_TIMEOUT: u64 = 30_000;
 /// Max memory footprint for buffer: SpanSize x BatchSize x BufferSize = 2KB x 512 x 32 ~ 32MB
 pub const SPAN_EXPORTER_MPSC_CHANNEL_BUFFER_SIZE: usize = 32;
 pub const SPAN_EXPORTER_SHUTDOWN_CHANNEL_BUFFER_SIZE: usize = 256;
+pub const SPAN_EXPORT_BATCH_TIMEOUT_SECONDS: u64 = 30;
 
 /// CAPNP exporter that sends tracing data
 ///
@@ -209,7 +210,11 @@ async fn export_batch(
         }
     }
     // need to make OTEL complient by returning SUCCESS or FAILURE to SpanExporter.export()
-    let _response = request.send().promise.await?;
+    tokio::time::timeout(
+        Duration::from_secs(SPAN_EXPORT_BATCH_TIMEOUT_SECONDS),
+        request.send().promise,
+    )
+    .await??;
     // let reply = response.get()?.get_reply()?.get_count();
     // writeln!(std::io::stdout(), "{}", reply)?;
     Ok(())
