@@ -178,7 +178,7 @@ async fn export_loop(
                 }
             },
             Some(ShutDown) = rx_shutdown.recv() => {
-                // close channel so noone can send: close then flush
+                rx_export.close();
                 while let Ok(batch) = rx_export.try_recv() {
                     let _ = export_batch(&client, batch).await;
                 }
