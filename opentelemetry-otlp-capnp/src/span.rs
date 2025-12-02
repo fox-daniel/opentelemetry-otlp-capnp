@@ -171,7 +171,8 @@ async fn export_loop(
 ) {
     loop {
         tokio::select! {
-            // does dropping recv cause data loss? cancel safety
+            // The recv method is cancel safe: if the other branch completes first,
+            // then no messages will have been received.
             Some(batch) = rx_export.recv() => {
                 if let Err(e) = export_batch(&client, batch).await {
                     let _ = writeln!(io::stdout(), "Export failed: {}", e);
