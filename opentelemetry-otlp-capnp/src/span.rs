@@ -153,6 +153,16 @@ impl SpanExporter {
     }
 }
 
+impl opentelemetry_sdk::trace::SpanExporter for SpanExporter {
+    async fn export(&self, batch: Vec<SpanData>) -> OTelSdkResult {
+        self.tx_export.send(batch).await.map_err(|e| {
+            OTelSdkError::InternalFailure(format!(
+                "Failed to send span batch over MPSC to Cap'n Proto Exporter Thread: {e}"
+            ))
+        })
+    }
+}
+
 async fn export_loop(
     // client: trace_service::Client,
     client: span_export::Client,
@@ -198,20 +208,9 @@ async fn export_batch(
             populate_span_minimal(span_builder, span)?;
         }
     }
-    // consider dropping promise for open loop; don't want buffer in channel to fill up if receiver is slow
-
+    // need to make OTEL complient by returning SUCCESS or FAILURE to SpanExporter.export()
     let _response = request.send().promise.await?;
     // let reply = response.get()?.get_reply()?.get_count();
     // writeln!(std::io::stdout(), "{}", reply)?;
     Ok(())
-}
-
-impl opentelemetry_sdk::trace::SpanExporter for SpanExporter {
-    async fn export(&self, batch: Vec<SpanData>) -> OTelSdkResult {
-        self.tx_export.send(batch).await.map_err(|e| {
-            OTelSdkError::InternalFailure(format!(
-                "Failed to send span batch over MPSC to Cap'n Proto Exporter Thread: {e}"
-            ))
-        })
-    }
 }
