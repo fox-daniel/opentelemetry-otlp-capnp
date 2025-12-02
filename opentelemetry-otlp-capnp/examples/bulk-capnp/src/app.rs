@@ -77,7 +77,7 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
 async fn top_level_function() {
     let mut set = JoinSet::new();
 
-    for i in 0..1000 {
+    for i in 0..10 {
         set.spawn(
             async move {
                 writeln!(io::stdout(), "hi from task {i}").ok();
