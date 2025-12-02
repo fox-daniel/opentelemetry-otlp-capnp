@@ -41,8 +41,7 @@ pub const SPAN_EXPORTER_TIMEOUT: u64 = 30_000;
 /// Max memory footprint for buffer: SpanSize x BatchSize x BufferSize = 2KB x 512 x 32 ~ 32MB
 pub const SPAN_EXPORTER_MPSC_CHANNEL_BUFFER_SIZE: usize = 32;
 pub const SPAN_EXPORTER_SHUTDOWN_CHANNEL_BUFFER_SIZE: usize = 256;
-pub const SPAN_EXPORT_BATCH_TIMEOUT_SECONDS: u64 = 30;
-
+pub const CAPNP_EXPORTER_RPC_TRACES_TIMEOUT: u64 = 10;
 /// CAPNP exporter that sends tracing data
 ///
 /// Forwards SpanData over a tokio channel to the thread dedicated to
@@ -191,10 +190,12 @@ async fn export_loop(
 }
 
 // TODO
-// - add retry with exponential backoff
+// - add retry with exponential backoff; use Arc::new(batch) and clone it for retries
 // - group spans by resource and scope
+// - add partial success handling
+// - allow some kind of interceptor so users can inject metadata and context
 // - put resource spans as message into a Request that includes metadata, extensions, and the message
-// - need to push responses into async tasks and return Success or Error for SpanExporter export
+// - need to return Success or Error for SpanExporter export without blocking or causing resource bloat
 async fn export_batch(
     // client: &trace_service::Client,
     client: &span_export::Client,
@@ -211,7 +212,7 @@ async fn export_batch(
     }
     // need to make OTEL complient by returning SUCCESS or FAILURE to SpanExporter.export()
     tokio::time::timeout(
-        Duration::from_secs(SPAN_EXPORT_BATCH_TIMEOUT_SECONDS),
+        Duration::from_secs(CAPNP_EXPORTER_RPC_TRACES_TIMEOUT),
         request.send().promise,
     )
     .await??;
