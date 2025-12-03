@@ -1,5 +1,6 @@
 use crate::common_capnp::{self, any_value::Builder};
 use crate::trace_capnp;
+use crate::transform::common::to_nanos;
 use opentelemetry::trace::{self, SpanKind};
 use opentelemetry::{KeyValue, Value};
 use opentelemetry_sdk::trace::SpanData;
@@ -93,10 +94,30 @@ pub fn populate_span(
         populate_value_builder(kv_builder.init_value(), &attr.value)?;
     }
     builder.set_dropped_events_count(source_span.events.dropped_count);
-    builder.reborrow().init_events(0);
+    // TODO: events builder refactor into abstractions
+    let mut events_builder = builder
+        .reborrow()
+        .init_events(source_span.events.len() as u32);
+    for (id, event) in source_span.events.events.into_iter().enumerate() {
+        let mut event_builder = events_builder.reborrow().get(id as u32);
+        event_builder
+            .reborrow()
+            .set_time_unix_nano(to_nanos(event.timestamp));
+        event_builder.reborrow().set_name(event.name.into_owned());
+        let mut event_attributes_builder = event_builder
+            .reborrow()
+            .init_attributes(event.attributes.len() as u32);
+        for (id, attr) in event.attributes.into_iter().enumerate() {
+            let mut kv_builder = event_attributes_builder.reborrow().get(id as u32);
+            kv_builder.set_key(attr.key.as_str());
+            populate_value_builder(kv_builder.init_value(), &attr.value)?;
+        }
+        event_builder
+            .reborrow()
+            .set_dropped_attributes_count(event.dropped_attributes_count);
+    }
     builder.reborrow().init_links(0);
     //TODO:
-    // - events
     // - links
     builder.set_dropped_links_count(source_span.links.dropped_count);
     let mut status = builder.init_status();
