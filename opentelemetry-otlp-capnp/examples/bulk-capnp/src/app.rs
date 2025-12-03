@@ -11,7 +11,7 @@ use std::sync::OnceLock;
 use std::time::Duration;
 use tokio::task::JoinSet;
 use tracing::instrument::WithSubscriber;
-use tracing::{info, info_span, instrument, Instrument};
+use tracing::{event, field, info, info_span, instrument, Instrument, Level, Span};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
 
@@ -73,11 +73,12 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-#[instrument(name = "app top level function")]
+#[instrument(name = "app top level function", fields(nested_attr=tracing::field::Empty))]
 async fn top_level_function() {
     let mut set = JoinSet::new();
-
-    for i in 0..10 {
+    let nested = vec![vec![0, 1], vec![2, 3]];
+    Span::current().record("nested_attr", field::debug(&nested));
+    for i in 0..2 {
         set.spawn(
             async move {
                 writeln!(io::stdout(), "hi from task {i}").ok();
@@ -99,6 +100,8 @@ async fn inner_function(i: u64) {
     let dur = (i + 1) * 10;
     tokio::time::sleep(Duration::from_millis(dur)).await;
     info!("i slept for {dur}ms");
+    let data = vec![i; 2];
+    event!(Level::INFO, name = "event", ?data);
 }
 
 fn init_traces() -> io::Result<SdkTracerProvider> {

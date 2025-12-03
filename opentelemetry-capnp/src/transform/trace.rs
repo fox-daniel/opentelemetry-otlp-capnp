@@ -1,8 +1,10 @@
+use crate::common_capnp::{self, any_value::Builder};
 use crate::trace_capnp;
-use opentelemetry::trace::SpanKind;
+use crate::transform::common::to_nanos;
+use opentelemetry::trace::{self, SpanKind};
+use opentelemetry::{KeyValue, Value};
 use opentelemetry_sdk::trace::SpanData;
 use std::time::UNIX_EPOCH;
-
 /// Populate a Span with minimal data for testing
 pub fn populate_span_minimal(
     mut builder: trace_capnp::span::Builder,
@@ -48,6 +50,16 @@ impl From<SpanKind> for trace_capnp::span::SpanKind {
     }
 }
 
+impl From<&trace::Status> for trace_capnp::status::StatusCode {
+    fn from(status: &trace::Status) -> Self {
+        match status {
+            trace::Status::Ok => trace_capnp::status::StatusCode::Ok,
+            trace::Status::Unset => trace_capnp::status::StatusCode::Unset,
+            trace::Status::Error { .. } => trace_capnp::status::StatusCode::Error,
+        }
+    }
+}
+
 pub fn populate_span(
     mut builder: trace_capnp::span::Builder,
     source_span: SpanData,
@@ -72,16 +84,158 @@ pub fn populate_span(
     // // Set kind to Internal as default
     // builder.set_kind(trace_capnp::span::SpanKind::SpanKindInternal);
 
-    // Empty collections for now
-    builder.reborrow().init_attributes(0);
-    // builder.set_attributes(source_span.attributes);
-    builder.reborrow().init_events(0);
-    builder.reborrow().init_links(0);
+    let attributes = source_span.attributes;
+    let mut attributes_builder = builder.reborrow().init_attributes(attributes.len() as u32);
+    // TODO: should this be more similar to the OTLP transform?
+    // `impl From<Value> for AnyValue` instead of populate_value_builder
+    for (id, attr) in attributes.into_iter().enumerate() {
+        let mut kv_builder = attributes_builder.reborrow().get(id as u32);
+        kv_builder.reborrow().set_key(attr.key.as_str());
+        populate_value_builder(kv_builder.init_value(), &attr.value)?;
+    }
+    builder.set_dropped_events_count(source_span.events.dropped_count);
+    // TODO: events builder refactor into abstractions
+    let mut events_builder = builder
+        .reborrow()
+        .init_events(source_span.events.len() as u32);
+    for (id, event) in source_span.events.events.into_iter().enumerate() {
+        let mut event_builder = events_builder.reborrow().get(id as u32);
+        event_builder
+            .reborrow()
+            .set_time_unix_nano(to_nanos(event.timestamp));
+        event_builder.reborrow().set_name(event.name.into_owned());
+        let mut event_attributes_builder = event_builder
+            .reborrow()
+            .init_attributes(event.attributes.len() as u32);
+        for (id, attr) in event.attributes.into_iter().enumerate() {
+            let mut kv_builder = event_attributes_builder.reborrow().get(id as u32);
+            kv_builder.set_key(attr.key.as_str());
+            populate_value_builder(kv_builder.init_value(), &attr.value)?;
+        }
+        event_builder
+            .reborrow()
+            .set_dropped_attributes_count(event.dropped_attributes_count);
+    }
 
-    // Set simple status
+    builder.set_dropped_links_count(source_span.links.dropped_count);
+    let mut links_builder = builder
+        .reborrow()
+        .init_links(source_span.links.len() as u32);
+    for (id, link) in source_span.links.into_iter().enumerate() {
+        let mut link_builder = links_builder.reborrow().get(id as u32);
+        link_builder
+            .reborrow()
+            .set_trace_id(&link.span_context.trace_id().to_bytes());
+        link_builder
+            .reborrow()
+            .set_span_id(&link.span_context.span_id().to_bytes());
+        link_builder
+            .reborrow()
+            .set_trace_state(link.span_context.trace_state().header());
+        link_builder
+            .reborrow()
+            .set_dropped_attributes_count(link.dropped_attributes_count);
+        let mut attr_builder = link_builder
+            .reborrow()
+            .init_attributes(link.attributes.len() as u32);
+        for (id, attr) in link.attributes.into_iter().enumerate() {
+            let mut kv_builder = attr_builder.reborrow().get(id as u32);
+            kv_builder.set_key(attr.key.as_str());
+            populate_value_builder(kv_builder.init_value(), &attr.value)?;
+            // link_builder.set_flags();
+        }
+    }
+    //TODO:
+    // - links: spanflags
     let mut status = builder.init_status();
-    status.set_code(trace_capnp::status::StatusCode::Unset);
-    status.set_message("i am a test span");
+    status.set_code(trace_capnp::status::StatusCode::from(&source_span.status));
+    status.set_message(match &source_span.status {
+        trace::Status::Error { description } => description.to_string(),
+        _ => Default::default(),
+    });
 
     Ok(())
 }
+
+fn populate_value_builder(
+    value_builder: Builder<'_>,
+    value: &Value,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use opentelemetry::Value;
+    let mut value_builder = value_builder.init_value();
+    match value {
+        Value::Bool(val) => value_builder.set_bool_value(*val),
+        Value::I64(val) => value_builder.set_int_value(*val),
+        Value::F64(val) => value_builder.set_double_value(*val),
+        Value::String(val) => value_builder.set_string_value(val),
+        Value::Array(arr) => {
+            populate_array(value_builder.init_array_value(), arr)?;
+        }
+        _ => {
+            value_builder.set_string_value("unsupported");
+        }
+    }
+    Ok(())
+}
+
+fn populate_array(
+    array_value_builder: common_capnp::array_value::Builder<'_>,
+    array: &opentelemetry::Array,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use opentelemetry::Array;
+
+    match array {
+        Array::Bool(bools) => {
+            let mut values = array_value_builder.init_values(bools.len() as u32);
+            for (idx, &b) in bools.iter().enumerate() {
+                values
+                    .reborrow()
+                    .get(idx as u32)
+                    .init_value()
+                    .set_bool_value(b);
+            }
+        }
+        Array::I64(ints) => {
+            let mut values = array_value_builder.init_values(ints.len() as u32);
+            for (idx, &i) in ints.iter().enumerate() {
+                values
+                    .reborrow()
+                    .get(idx as u32)
+                    .init_value()
+                    .set_int_value(i);
+            }
+        }
+        Array::F64(floats) => {
+            let mut values = array_value_builder.init_values(floats.len() as u32);
+            for (idx, &f) in floats.iter().enumerate() {
+                values
+                    .reborrow()
+                    .get(idx as u32)
+                    .init_value()
+                    .set_double_value(f);
+            }
+        }
+        Array::String(strings) => {
+            let mut values = array_value_builder.init_values(strings.len() as u32);
+            for (idx, s) in strings.iter().enumerate() {
+                values
+                    .reborrow()
+                    .get(idx as u32)
+                    .init_value()
+                    .set_string_value(s.as_ref());
+            }
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+// pub(crate) fn build_span_flags(parent_span_is_remote: bool, base_flags: u32) -> u32 {
+//     use crate::;
+//     let mut flags = base_flags;
+//     flags |= SpanFlags::ContextHasIsRemoteMask as u32;
+//     if parent_span_is_remote {
+//         flags |= SpanFlags::ContextIsRemoteMask as u32;
+//     }
+//     flags
+// }
