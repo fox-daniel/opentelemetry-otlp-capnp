@@ -1,8 +1,9 @@
+use crate::common_capnp::{self, any_value::Builder};
 use crate::trace_capnp;
 use opentelemetry::trace::SpanKind;
+use opentelemetry::{KeyValue, Value};
 use opentelemetry_sdk::trace::SpanData;
 use std::time::UNIX_EPOCH;
-
 /// Populate a Span with minimal data for testing
 pub fn populate_span_minimal(
     mut builder: trace_capnp::span::Builder,
@@ -72,8 +73,13 @@ pub fn populate_span(
     // // Set kind to Internal as default
     // builder.set_kind(trace_capnp::span::SpanKind::SpanKindInternal);
 
-    // Empty collections for now
-    builder.reborrow().init_attributes(0);
+    let attributes = source_span.attributes;
+    let mut attributes_builder = builder.reborrow().init_attributes(attributes.len() as u32);
+    for (id, attr) in attributes.into_iter().enumerate() {
+        let mut kv_builder = attributes_builder.reborrow().get(id as u32);
+        kv_builder.reborrow().set_key(attr.key.as_str());
+        populate_value_builder(kv_builder.init_value(), &attr.value)?;
+    }
     // builder.set_attributes(source_span.attributes);
     builder.reborrow().init_events(0);
     builder.reborrow().init_links(0);
@@ -83,5 +89,78 @@ pub fn populate_span(
     status.set_code(trace_capnp::status::StatusCode::Unset);
     status.set_message("i am a test span");
 
+    Ok(())
+}
+
+fn populate_value_builder(
+    value_builder: Builder<'_>,
+    value: &Value,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use opentelemetry::Value;
+    let mut value_builder = value_builder.init_value();
+    match value {
+        Value::Bool(val) => value_builder.set_bool_value(*val),
+        Value::I64(val) => value_builder.set_int_value(*val),
+        Value::F64(val) => value_builder.set_double_value(*val),
+        Value::String(val) => value_builder.set_string_value(val),
+        Value::Array(arr) => {
+            populate_array(value_builder.init_array_value(), arr)?;
+        }
+        _ => {
+            value_builder.set_string_value("unsupported");
+        }
+    }
+    Ok(())
+}
+
+fn populate_array(
+    array_value_builder: common_capnp::array_value::Builder<'_>,
+    array: &opentelemetry::Array,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use opentelemetry::Array;
+
+    match array {
+        Array::Bool(bools) => {
+            let mut values = array_value_builder.init_values(bools.len() as u32);
+            for (idx, &b) in bools.iter().enumerate() {
+                values
+                    .reborrow()
+                    .get(idx as u32)
+                    .init_value()
+                    .set_bool_value(b);
+            }
+        }
+        Array::I64(ints) => {
+            let mut values = array_value_builder.init_values(ints.len() as u32);
+            for (idx, &i) in ints.iter().enumerate() {
+                values
+                    .reborrow()
+                    .get(idx as u32)
+                    .init_value()
+                    .set_int_value(i);
+            }
+        }
+        Array::F64(floats) => {
+            let mut values = array_value_builder.init_values(floats.len() as u32);
+            for (idx, &f) in floats.iter().enumerate() {
+                values
+                    .reborrow()
+                    .get(idx as u32)
+                    .init_value()
+                    .set_double_value(f);
+            }
+        }
+        Array::String(strings) => {
+            let mut values = array_value_builder.init_values(strings.len() as u32);
+            for (idx, s) in strings.iter().enumerate() {
+                values
+                    .reborrow()
+                    .get(idx as u32)
+                    .init_value()
+                    .set_string_value(s.as_ref());
+            }
+        }
+        _ => {}
+    }
     Ok(())
 }
