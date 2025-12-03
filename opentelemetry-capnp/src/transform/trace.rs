@@ -75,16 +75,21 @@ pub fn populate_span(
 
     let attributes = source_span.attributes;
     let mut attributes_builder = builder.reborrow().init_attributes(attributes.len() as u32);
+    // TODO: should this be more similar to the OTLP transform?
+    // `impl From<Value> for AnyValue` instead of populate_value_builder
     for (id, attr) in attributes.into_iter().enumerate() {
         let mut kv_builder = attributes_builder.reborrow().get(id as u32);
         kv_builder.reborrow().set_key(attr.key.as_str());
         populate_value_builder(kv_builder.init_value(), &attr.value)?;
     }
-    // builder.set_attributes(source_span.attributes);
     builder.reborrow().init_events(0);
     builder.reborrow().init_links(0);
-
-    // Set simple status
+    //TODO:
+    // - dropped events count
+    // - events
+    // - dropped linnks count
+    // - links
+    // - set status properly
     let mut status = builder.init_status();
     status.set_code(trace_capnp::status::StatusCode::Unset);
     status.set_message("i am a test span");
