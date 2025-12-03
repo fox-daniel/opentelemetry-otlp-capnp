@@ -116,10 +116,37 @@ pub fn populate_span(
             .reborrow()
             .set_dropped_attributes_count(event.dropped_attributes_count);
     }
-    builder.reborrow().init_links(0);
-    //TODO:
-    // - links
+
     builder.set_dropped_links_count(source_span.links.dropped_count);
+    let mut links_builder = builder
+        .reborrow()
+        .init_links(source_span.links.len() as u32);
+    for (id, link) in source_span.links.into_iter().enumerate() {
+        let mut link_builder = links_builder.reborrow().get(id as u32);
+        link_builder
+            .reborrow()
+            .set_trace_id(&link.span_context.trace_id().to_bytes());
+        link_builder
+            .reborrow()
+            .set_span_id(&link.span_context.span_id().to_bytes());
+        link_builder
+            .reborrow()
+            .set_trace_state(link.span_context.trace_state().header());
+        link_builder
+            .reborrow()
+            .set_dropped_attributes_count(link.dropped_attributes_count);
+        let mut attr_builder = link_builder
+            .reborrow()
+            .init_attributes(link.attributes.len() as u32);
+        for (id, attr) in link.attributes.into_iter().enumerate() {
+            let mut kv_builder = attr_builder.reborrow().get(id as u32);
+            kv_builder.set_key(attr.key.as_str());
+            populate_value_builder(kv_builder.init_value(), &attr.value)?;
+            // link_builder.set_flags();
+        }
+    }
+    //TODO:
+    // - links: spanflags
     let mut status = builder.init_status();
     status.set_code(trace_capnp::status::StatusCode::from(&source_span.status));
     status.set_message(match &source_span.status {
@@ -202,3 +229,13 @@ fn populate_array(
     }
     Ok(())
 }
+
+// pub(crate) fn build_span_flags(parent_span_is_remote: bool, base_flags: u32) -> u32 {
+//     use crate::;
+//     let mut flags = base_flags;
+//     flags |= SpanFlags::ContextHasIsRemoteMask as u32;
+//     if parent_span_is_remote {
+//         flags |= SpanFlags::ContextIsRemoteMask as u32;
+//     }
+//     flags
+// }
