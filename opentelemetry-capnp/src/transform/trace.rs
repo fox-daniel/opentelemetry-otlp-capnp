@@ -1,6 +1,6 @@
 use crate::common_capnp::{self, any_value::Builder};
 use crate::trace_capnp;
-use opentelemetry::trace::SpanKind;
+use opentelemetry::trace::{self, SpanKind};
 use opentelemetry::{KeyValue, Value};
 use opentelemetry_sdk::trace::SpanData;
 use std::time::UNIX_EPOCH;
@@ -49,6 +49,16 @@ impl From<SpanKind> for trace_capnp::span::SpanKind {
     }
 }
 
+impl From<&trace::Status> for trace_capnp::status::StatusCode {
+    fn from(status: &trace::Status) -> Self {
+        match status {
+            trace::Status::Ok => trace_capnp::status::StatusCode::Ok,
+            trace::Status::Unset => trace_capnp::status::StatusCode::Unset,
+            trace::Status::Error { .. } => trace_capnp::status::StatusCode::Error,
+        }
+    }
+}
+
 pub fn populate_span(
     mut builder: trace_capnp::span::Builder,
     source_span: SpanData,
@@ -82,17 +92,19 @@ pub fn populate_span(
         kv_builder.reborrow().set_key(attr.key.as_str());
         populate_value_builder(kv_builder.init_value(), &attr.value)?;
     }
+    builder.set_dropped_events_count(source_span.events.dropped_count);
     builder.reborrow().init_events(0);
     builder.reborrow().init_links(0);
     //TODO:
-    // - dropped events count
     // - events
-    // - dropped linnks count
     // - links
-    // - set status properly
+    builder.set_dropped_links_count(source_span.links.dropped_count);
     let mut status = builder.init_status();
-    status.set_code(trace_capnp::status::StatusCode::Unset);
-    status.set_message("i am a test span");
+    status.set_code(trace_capnp::status::StatusCode::from(&source_span.status));
+    status.set_message(match &source_span.status {
+        trace::Status::Error { description } => description.to_string(),
+        _ => Default::default(),
+    });
 
     Ok(())
 }
