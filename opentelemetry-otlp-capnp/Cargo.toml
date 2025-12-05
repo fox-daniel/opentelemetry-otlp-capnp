@@ -24,6 +24,9 @@ opentelemetry-capnp = { workspace = true }
 capnp-rpc = { workspace = true }
 capnp = { workspace = true }
 
+[dev-dependencies]
+criterion.workspace = true
+
 [[example]]
 name = "basic-otlp"
 path = "examples/basic-otlp"
@@ -35,3 +38,7 @@ path = "examples/basic-otlp-trace"
 [[example]]
 name = "basic-capnp"
 path = "examples/basic-capnp"
+
+[[bench]]
+name = "encode_capnp_trace_bench"
+harness = false
