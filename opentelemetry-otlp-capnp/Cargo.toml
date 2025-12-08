@@ -26,6 +26,8 @@ capnp = { workspace = true }
 
 [dev-dependencies]
 criterion.workspace = true
+tracing.workspace = true
+tracing_subscriber.workspace = true
 
 [[example]]
 name = "basic-otlp"
@@ -41,4 +43,8 @@ path = "examples/basic-capnp"
 
 [[bench]]
 name = "encode_capnp_trace_bench"
+harness = false
+
+[[bench]]
+name = "basic_bulk_span_export"
 harness = false
