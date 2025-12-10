@@ -12,7 +12,7 @@ use std::io;
 use std::io::{ErrorKind, Write};
 use std::time::Duration;
 // this is a temporary interface to get an example working
-use opentelemetry_capnp::span_export;
+// use opentelemetry_capnp::span_export;
 
 // use crate::exporter::capnp::trace::CapnpTracesClient;
 // use crate::{
@@ -138,7 +138,7 @@ impl SpanExporter {
                 // let client: trace_service::Client =
                 //     rpc_system.bootstrap(rpc_twoparty_capnp::Side::Server);
 
-                let client: span_export::Client =
+                let client: trace_service::Client =
                     rpc_system.bootstrap(rpc_twoparty_capnp::Side::Server);
                 tokio::task::spawn_local(rpc_system);
 
@@ -163,8 +163,7 @@ impl opentelemetry_sdk::trace::SpanExporter for SpanExporter {
 }
 
 async fn export_loop(
-    // client: trace_service::Client,
-    client: span_export::Client,
+    client: trace_service::Client,
     mut rx_export: mpsc::Receiver<Vec<SpanData>>,
     mut rx_shutdown: mpsc::Receiver<ShutDown>,
 ) {
@@ -192,19 +191,20 @@ async fn export_loop(
 // TODO
 // - add retry with exponential backoff; use Arc::new(batch) and clone it for retries
 // - group spans by resource and scope
+//   - how to do this without unnecessary copies?
 // - add partial success handling
 // - allow some kind of interceptor so users can inject metadata and context
 // - put resource spans as message into a Request that includes metadata, extensions, and the message
 // - need to return Success or Error for SpanExporter export without blocking or causing resource bloat
 async fn export_batch(
-    // client: &trace_service::Client,
-    client: &span_export::Client,
+    client: &trace_service::Client,
     batch: Vec<SpanData>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut request = client.send_span_data_request();
+    let mut request = client.export_request();
     {
         let span_data_builder = request.get().init_request();
-        let mut spans_builder = span_data_builder.init_spans(batch.len() as u32);
+        let mut spans_builder = span_data_builder.init_resource_spans(batch.len() as u32);
+        // TODO: modify below: need build resource spans with scope
         for (idx, span) in batch.into_iter().enumerate() {
             let span_builder = spans_builder.reborrow().get(idx as u32);
             populate_span(span_builder, span)?;

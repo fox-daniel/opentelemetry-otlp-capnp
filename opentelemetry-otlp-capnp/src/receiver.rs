@@ -2,6 +2,7 @@ use capnp::capability::Promise;
 use capnp_rpc::{pry, rpc_twoparty_capnp, twoparty, RpcSystem};
 use futures::io::AsyncReadExt;
 use opentelemetry_capnp::span_export;
+use opentelemetry_capnp::trace_service;
 use std::io::Write;
 use std::net::{SocketAddr, ToSocketAddrs};
 
@@ -54,7 +55,7 @@ impl SpanReceiver {
             local.block_on(&rt, async {
                 let listener = tokio::net::TcpListener::bind(self.addr).await.unwrap();
                 // let client: trace_service::Client = capnp_rpc::new_client(SpanReceiver);
-                let client: span_export::Client = capnp_rpc::new_client(self);
+                let client: trace_service::Client = capnp_rpc::new_client(self);
 
                 loop {
                     let (stream, _) = listener.accept().await.unwrap();

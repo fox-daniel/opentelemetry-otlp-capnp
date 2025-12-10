@@ -18,9 +18,7 @@ interface SpanExport {
 
   sendSpanData @0 (request: SpanData) -> (reply: SpanDataReply);
 }
-
 # END Temporary schema elements
-
 
 # TracesData represents the traces data that can be stored in a persistent storage,
 # OR can be embedded by other protocols that transfer OTLP traces data but do

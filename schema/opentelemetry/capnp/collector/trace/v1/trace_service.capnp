@@ -3,7 +3,7 @@
 using Trace = import "../../../trace/v1/trace.capnp";
 
 interface TraceService {
-     exportTraces @0 (request: ExportTraceServiceRequest) -> (response: ExportTraceServiceResponse);
+     export @0 (request: ExportTraceServiceRequest) -> (response: ExportTraceServiceResponse);
    }
 
 struct ExportTraceServiceRequest {
