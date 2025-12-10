@@ -3,13 +3,14 @@
 //! Defines a [SpanExporter] to send trace data via an extended
 //! OpenTelemetry Protocol using Cap'n Proto.
 
+use crate::connect_with_retry;
 use futures::io::AsyncReadExt;
 use opentelemetry_capnp::{trace_service, transform::trace::populate_span};
 use opentelemetry_sdk::error::{OTelSdkError, OTelSdkResult};
 use opentelemetry_sdk::trace::SpanData;
 use std::fmt::Debug;
 use std::io;
-use std::io::{ErrorKind, Write};
+use std::io::Write;
 use std::time::Duration;
 // this is a temporary interface to get an example working
 // use opentelemetry_capnp::span_export;
@@ -53,42 +54,15 @@ pub const CAPNP_EXPORTER_RPC_TRACES_TIMEOUT: u64 = 10;
 /// is placed on a dedicated thread and all SpanData is sent to it
 #[derive(Debug)]
 pub struct SpanExporter {
-    tx_export: tokio::sync::mpsc::Sender<Vec<SpanData>>,
-    tx_shutdown: tokio::sync::mpsc::Sender<ShutDown>,
+    client: SupportedTransportClient,
+    // these two lines need to go into an inner client
+    // tx_export: tokio::sync::mpsc::Sender<Vec<SpanData>>,
+    // tx_shutdown: tokio::sync::mpsc::Sender<ShutDown>,
 }
 
-// #[derive(Debug)]
-// enum SupportedTransportClient {
-//     Capnp(crate::exporter::capnp::trace::CapnpTracesClient),
-// }
-
-async fn connect_with_retry(
-    addr: &SocketAddr,
-    timeout_ms: u64,
-) -> io::Result<tokio::net::TcpStream> {
-    let mut delay = Duration::from_millis(1);
-    loop {
-        tokio::time::sleep(delay).await;
-
-        match tokio::net::TcpStream::connect(&addr).await {
-            Ok(stream) => {
-                return io::Result::Ok(stream);
-            }
-            Err(e) => {
-                let _ = writeln!(
-                    io::stdout(),
-                    "Connection attempt failed for SpanExporter: {e}"
-                );
-                if delay > Duration::from_millis(timeout_ms) {
-                    return Err(io::Error::new(
-                        ErrorKind::TimedOut,
-                        "Connection retry timeout exceeded",
-                    ));
-                }
-                delay *= 2;
-            }
-        }
-    }
+#[derive(Debug)]
+enum SupportedTransportClient {
+    Capnp(crate::exporter::capnp::trace::CapnpTracesClient),
 }
 
 impl SpanExporter {

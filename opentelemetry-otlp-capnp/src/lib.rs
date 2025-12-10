@@ -2,7 +2,7 @@ mod exporter;
 mod receiver;
 pub mod retry;
 mod span;
-pub use crate::exporter::capnp::CapnpConfig;
+pub use crate::exporter::capnp::{connect_with_retry, CapnpConfig};
 pub use crate::exporter::ExporterBuildError;
 pub use crate::receiver::SpanReceiver;
 pub use crate::span::{

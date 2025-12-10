@@ -1,3 +1,7 @@
+use std::io;
+use std::io::{ErrorKind, Write};
+use std::net::SocketAddr;
+use std::time::Duration;
 pub(crate) mod trace;
 
 // use crate::ExportConfig;
@@ -53,3 +57,32 @@ pub struct CapnpConfig {
 //         Ok(crate::SpanExporter::from_capnp(client))
 //     }
 // }
+
+pub async fn connect_with_retry(
+    addr: &SocketAddr,
+    timeout_ms: u64,
+) -> io::Result<tokio::net::TcpStream> {
+    let mut delay = Duration::from_millis(1);
+    loop {
+        tokio::time::sleep(delay).await;
+
+        match tokio::net::TcpStream::connect(&addr).await {
+            Ok(stream) => {
+                return io::Result::Ok(stream);
+            }
+            Err(e) => {
+                let _ = writeln!(
+                    io::stdout(),
+                    "Connection attempt failed for SpanExporter: {e}"
+                );
+                if delay > Duration::from_millis(timeout_ms) {
+                    return Err(io::Error::new(
+                        ErrorKind::TimedOut,
+                        "Connection retry timeout exceeded",
+                    ));
+                }
+                delay *= 2;
+            }
+        }
+    }
+}
