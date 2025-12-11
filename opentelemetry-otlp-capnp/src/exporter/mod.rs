@@ -1,3 +1,4 @@
+use crate::exporter::capnp::CapnpExporterBuilder;
 use crate::Protocol;
 use std::time::Duration;
 use thiserror::Error;
