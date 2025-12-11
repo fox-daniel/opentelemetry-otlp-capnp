@@ -1,5 +1,7 @@
 use crate::retry::RetryPolicy;
 use core::fmt;
+// the following path is different than the OTLP because this crate doesn't use an extra module
+// indrection for the rpc layer since it is all capnp
 use opentelemetry_capnp::collector::trace::v1::{
     trace_service_client::TraceServiceClient, ExportTraceServiceRequest,
 };
@@ -13,7 +15,7 @@ use tokio::sync::Mutex;
 use crate::connect_with_retry;
 use crate::ShutDown;
 use futures::io::AsyncReadExt;
-use opentelemetry_capnp::{trace_service, transform::trace::populate_span};
+use opentelemetry_capnp::{capnp::capnp_rpc::trace_service, transform::trace::populate_span};
 use std::io;
 use std::io::Write;
 use std::time::Duration;

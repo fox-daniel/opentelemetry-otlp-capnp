@@ -1,5 +1,5 @@
-use crate::common_capnp::{self, any_value::Builder};
-use crate::trace_capnp;
+use crate::capnp::capnp_rpc::common_capnp::{self, any_value::Builder};
+use crate::capnp::capnp_rpc::trace_capnp;
 use crate::transform::common::to_nanos;
 use opentelemetry::trace::{self, SpanKind};
 use opentelemetry::{KeyValue, Value};

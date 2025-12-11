@@ -1,8 +1,7 @@
 use capnp::capability::Promise;
 use capnp_rpc::{pry, rpc_twoparty_capnp, twoparty, RpcSystem};
 use futures::io::AsyncReadExt;
-use opentelemetry_capnp::span_export;
-use opentelemetry_capnp::trace_service;
+use opentelemetry_capnp::capnp::capnp_rpc::trace_service;
 use std::io::Write;
 use std::net::{SocketAddr, ToSocketAddrs};
 
@@ -70,15 +69,15 @@ impl SpanReceiver {
 }
 
 /// Give the SpanReceiver the capability of receiving a
-/// `send_span_data` call from the client.
+/// `export` call from the client.
 ///
 /// Capabilities of the server are implemented from the
 /// perspective of the client calling those capabilities.
-impl span_export::Server for SpanReceiver {
-    fn send_span_data(
+impl trace_service::Server for SpanReceiver {
+    fn export(
         self: std::rc::Rc<Self>,
-        params: span_export::SendSpanDataParams,
-        mut results: span_export::SendSpanDataResults,
+        params: trace_service::ExportParams,
+        mut results: trace_service::ExportResults,
     ) -> impl futures::Future<Output = Result<(), capnp::Error>> + 'static {
         let request = pry!(params.get());
         let request_data = pry!(request.get_request());
