@@ -23,9 +23,6 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use tokio::sync::mpsc;
 use tokio::task::LocalSet;
 
-pub const OTEL_EXPORTER_CAPNP_TRACES_ENDPOINT: &str = "OTEL_EXPORTER_CAPNP_TRACES_ENDPOINT";
-/// Max waiting time for the backend to process each spans batch, defaults to 10s.
-pub const OTEL_EXPORTER_CAPNP_TRACES_TIMEOUT: &str = "OTEL_EXPORTER_CAPNP_TRACES_TIMEOUT";
 // pub const OTEL_EXPORTER_CAPNP_TRACES_COMPRESSION: &str = "OTEL_EXPORTER_CAPNP_TRACES_COMPRESSION";
 // pub const OTEL_EXPORTER_CAPNP_TRACES_HEADERS: &str = "OTEL_EXPORTER_CAPNP_TRACES_HEADERS";
 pub const SPAN_EXPORTER_TIMEOUT: u64 = 30_000;

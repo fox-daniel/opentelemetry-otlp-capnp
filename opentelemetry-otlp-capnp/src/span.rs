@@ -3,9 +3,19 @@
 //! Defines a [SpanExporter] to send trace data via an extended
 //! OpenTelemetry Protocol using Cap'n Proto.
 
+use crate::{
+    exporter::capnp::{CapnpExporterBuilder, HasCapnpConfig},
+    CapnpExporterBuilderSet,
+};
+use crate::{exporter::HasExportConfig, ExporterBuildError, NoExporterBuilderSet};
 use opentelemetry_sdk::error::{OTelSdkError, OTelSdkResult};
 use opentelemetry_sdk::trace::SpanData;
 use std::fmt::Debug;
+
+pub const OTEL_EXPORTER_CAPNP_TRACES_ENDPOINT: &str = "OTEL_EXPORTER_CAPNP_TRACES_ENDPOINT";
+/// Max waiting time for the backend to process each spans batch, defaults to 10s.
+pub const OTEL_EXPORTER_CAPNP_TRACES_TIMEOUT: &str = "OTEL_EXPORTER_CAPNP_TRACES_TIMEOUT";
+
 // this is a temporary interface to get an example working
 // use opentelemetry_capnp::span_export;
 
@@ -85,7 +95,7 @@ impl SpanExporter {
         SpanExporterBuilder::default()
     }
 
-    pub(crate) fn from_tonic(client: crate::exporter::capnp::trace::TonicTracesClient) -> Self {
+    pub(crate) fn from_capnp(client: crate::exporter::capnp::trace::CapnpTracesClient) -> Self {
         SpanExporter {
             client: SupportedTransportClient::Capnp(client),
         }
