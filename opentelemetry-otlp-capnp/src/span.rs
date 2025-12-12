@@ -3,12 +3,13 @@
 //! Defines a [SpanExporter] to send trace data via an extended
 //! OpenTelemetry Protocol using Cap'n Proto.
 
+use crate::exporter::capnp::trace::CapnpTracesClient;
 use crate::{
     exporter::capnp::{CapnpExporterBuilder, HasCapnpConfig},
     CapnpExporterBuilderSet,
 };
 use crate::{exporter::HasExportConfig, ExporterBuildError, NoExporterBuilderSet};
-use opentelemetry_sdk::error::{OTelSdkError, OTelSdkResult};
+use opentelemetry_sdk::error::OTelSdkResult;
 use opentelemetry_sdk::trace::SpanData;
 use std::fmt::Debug;
 
@@ -76,7 +77,7 @@ pub struct SpanExporter {
 
 #[derive(Debug)]
 enum SupportedTransportClient {
-    Capnp(crate::exporter::capnp::trace::CapnpTracesClient),
+    Capnp(CapnpTracesClient),
 }
 
 impl SpanExporter {
@@ -85,7 +86,7 @@ impl SpanExporter {
         SpanExporterBuilder::default()
     }
 
-    pub(crate) fn from_capnp(client: crate::exporter::capnp::trace::CapnpTracesClient) -> Self {
+    pub(crate) fn from_capnp(client: CapnpTracesClient) -> Self {
         SpanExporter {
             client: SupportedTransportClient::Capnp(client),
         }
