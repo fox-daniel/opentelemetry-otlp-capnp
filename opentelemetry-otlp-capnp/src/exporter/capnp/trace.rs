@@ -78,9 +78,10 @@ impl fmt::Debug for CapnpTracesClient {
     }
 }
 
-// this is not right, need to use the client and inner client correctly with the message passing layer
 impl opentelemetry_sdk::trace::SpanExporter for CapnpTracesClient {
     async fn export(&self, batch: Vec<SpanData>) -> OTelSdkResult {
+        // TODO
+        // use retry policy for trying to export
         match &self.inner {
             Some(inner_client) => {
                 inner_client
@@ -101,8 +102,20 @@ impl opentelemetry_sdk::trace::SpanExporter for CapnpTracesClient {
             None => return OTelSdkResult::Err(OTelSdkError::AlreadyShutdown),
         }
     }
+    fn shutdown(&mut self) -> OTelSdkResult {
+        // TODO
+        // check that this is correct
+        match self.inner.take() {
+            Some(_) => Ok(()), // Successfully took `inner`, indicating a successful shutdown.
+            None => Err(OTelSdkError::AlreadyShutdown), // `inner` was already `None`, meaning it's already shut down.
+        }
+    }
+
+    fn set_resource(&mut self, resource: &opentelemetry_sdk::Resource) {
+        self.resource = resource.into();
+    }
 }
-// this will become an impl on the message passing client
+
 impl CapnpMessageClient {
     // TODO
     // should boot up in unconnected state and be able to cache span data
@@ -147,8 +160,6 @@ impl CapnpMessageClient {
 
                 let _ = writeln!(io::stdout(), "rpc network established for exporter");
                 let mut rpc_system = RpcSystem::new(rpc_network, None);
-                // let client: trace_service::Client =
-                //     rpc_system.bootstrap(rpc_twoparty_capnp::Side::Server);
 
                 let client: trace_service::Client =
                     rpc_system.bootstrap(rpc_twoparty_capnp::Side::Server);
@@ -222,23 +233,3 @@ async fn export_batch(
     // writeln!(std::io::stdout(), "{}", reply)?;
     Ok(())
 }
-
-// impl SpanExporter for CapnpTracesClient {
-//     async fn export(&self, batch: Vec<SpanData>) -> OTelSdkResult {
-//         // let batch = Arc::new(batch);
-//         Err(OTelSdkError::InternalFailure(String::from(
-//             "need to implement export for CapnpTracesClient",
-//         )))
-//     }
-
-//     fn shutdown(&mut self) -> OTelSdkResult {
-//         match self.inner.take() {
-//             Some(_) => Ok(()), // Successfully took `inner`, indicating a successful shutdown.
-//             None => Err(OTelSdkError::AlreadyShutdown), // `inner` was already `None`, meaning it's already shut down.
-//         }
-//     }
-
-//     // fn set_resource(&mut self, resource: &opentelemetry_sdk::Resource) {
-//     //     self.resource = resource.into();
-//     // }
-// }
