@@ -19,6 +19,7 @@ use std::time::Duration;
 
 use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
 use std::net::{SocketAddr, ToSocketAddrs};
+use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use tokio::task::LocalSet;
 
@@ -148,18 +149,7 @@ impl CapnpMessageClient {
                 };
                 stream.set_nodelay(true).expect("no delay set");
 
-                let (reader, writer) =
-                    tokio_util::compat::TokioAsyncReadCompatExt::compat(stream).split();
-
-                let rpc_network = Box::new(twoparty::VatNetwork::new(
-                    futures::io::BufReader::new(reader),
-                    futures::io::BufWriter::new(writer),
-                    rpc_twoparty_capnp::Side::Client,
-                    Default::default(),
-                ));
-
-                let _ = writeln!(io::stdout(), "rpc network established for exporter");
-                let mut rpc_system = RpcSystem::new(rpc_network, None);
+                let mut rpc_system = build_capnp_rpc_system(stream);
 
                 let client: trace_service::Client =
                     rpc_system.bootstrap(rpc_twoparty_capnp::Side::Server);
@@ -173,6 +163,20 @@ impl CapnpMessageClient {
             tx_shutdown,
         }
     }
+}
+
+fn build_capnp_rpc_system(stream: TcpStream) -> RpcSystem<twoparty::VatId> {
+    let (reader, writer) = tokio_util::compat::TokioAsyncReadCompatExt::compat(stream).split();
+
+    let rpc_network = Box::new(twoparty::VatNetwork::new(
+        futures::io::BufReader::new(reader),
+        futures::io::BufWriter::new(writer),
+        rpc_twoparty_capnp::Side::Client,
+        Default::default(),
+    ));
+
+    let _ = writeln!(io::stdout(), "rpc network established for exporter");
+    RpcSystem::new(rpc_network, None)
 }
 
 async fn export_loop(
