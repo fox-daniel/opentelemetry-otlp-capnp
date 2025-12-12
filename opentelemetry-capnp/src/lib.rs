@@ -11,7 +11,7 @@ pub mod capnp;
 
 // pub use crate::capnp::capnp_rpc;
 
+pub use crate::capnp::capnp_rpc;
 #[doc(hidden)]
 pub use crate::capnp::capnp_rpc::{common_capnp, resource_capnp, trace_capnp, trace_service_capnp};
-
 pub mod transform;

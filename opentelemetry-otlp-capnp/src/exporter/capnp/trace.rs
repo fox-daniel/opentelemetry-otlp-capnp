@@ -2,9 +2,6 @@ use crate::retry::RetryPolicy;
 use core::fmt;
 // the following path is different than the OTLP because this crate doesn't use an extra module
 // indrection for the rpc layer since it is all capnp
-use opentelemetry_capnp::collector::trace::v1::{
-    trace_service_client::TraceServiceClient, ExportTraceServiceRequest,
-};
 use opentelemetry_sdk::{
     error::{OTelSdkError, OTelSdkResult},
     trace::{SpanData, SpanExporter},
@@ -36,6 +33,7 @@ pub const SPAN_EXPORTER_MPSC_CHANNEL_BUFFER_SIZE: usize = 32;
 pub const SPAN_EXPORTER_SHUTDOWN_CHANNEL_BUFFER_SIZE: usize = 256;
 pub const CAPNP_EXPORTER_RPC_TRACES_TIMEOUT: u64 = 10;
 
+#[derive(Clone)]
 pub(crate) struct CapnpTracesClient {
     inner: Option<ClientInner>,
     retry_policy: RetryPolicy,
@@ -44,16 +42,17 @@ pub(crate) struct CapnpTracesClient {
     resource: opentelemetry_capnp::transform::common::capnp::ResourceAttributesWithSchema,
 }
 
-// TODO
-// create one more layer of indirection with the message passing:
-// tx_export: tokio::sync::mpsc::Sender<Vec<SpanData>>,
-// tx_shutdown: tokio::sync::mpsc::Sender<ShutDown>,
-
-#[derive(Debug)]
+#[derive(Clone)]
 struct ClientInner {
-    // this may need to be generic over a channel
-    client: TraceServiceClient,
+    client: CapnpMessageClient,
+    // client: trace_service::Client,
     // include an interceptor?
+}
+
+#[derive(Clone)]
+struct CapnpMessageClient {
+    tx_export: tokio::sync::mpsc::Sender<Vec<SpanData>>,
+    tx_shutdown: tokio::sync::mpsc::Sender<ShutDown>,
 }
 
 impl fmt::Debug for CapnpTracesClient {
@@ -65,15 +64,29 @@ impl fmt::Debug for CapnpTracesClient {
 // this is not right, need to use the client and inner client correctly with the message passing layer
 impl opentelemetry_sdk::trace::SpanExporter for CapnpTracesClient {
     async fn export(&self, batch: Vec<SpanData>) -> OTelSdkResult {
-        self.tx_export.send(batch).await.map_err(|e| {
-            OTelSdkError::InternalFailure(format!(
-                "Failed to send span batch over MPSC to Cap'n Proto Exporter Thread: {e}"
-            ))
-        })
+        match &self.inner {
+            Some(inner_client) => {
+                inner_client
+                    .clone()
+                    .client
+                    .tx_export
+                    .send(batch)
+                    .await
+                    .map_err(|e| {
+                        OTelSdkError::InternalFailure(format!(
+                        "Failed to send span batch over MPSC to Cap'n Proto Exporter Thread: {e}"
+                    ))
+                    })?;
+                // TODO
+                // Need to surface errors returned from tx_export.send()
+                Ok(())
+            }
+            None => return OTelSdkResult::Err(OTelSdkError::AlreadyShutdown),
+        }
     }
 }
 // this will become an impl on the message passing client
-impl SpanExporter {
+impl CapnpMessageClient {
     // TODO
     // should boot up in unconnected state and be able to cache span data
     // when are able to connect, then do so and start exporting
@@ -127,7 +140,7 @@ impl SpanExporter {
                 export_loop(client, rx_export, rx_shutdown).await;
             });
         });
-        SpanExporter {
+        Self {
             tx_export,
             tx_shutdown,
         }

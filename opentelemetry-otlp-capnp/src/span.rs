@@ -16,19 +16,9 @@ pub const OTEL_EXPORTER_CAPNP_TRACES_ENDPOINT: &str = "OTEL_EXPORTER_CAPNP_TRACE
 /// Max waiting time for the backend to process each spans batch, defaults to 10s.
 pub const OTEL_EXPORTER_CAPNP_TRACES_TIMEOUT: &str = "OTEL_EXPORTER_CAPNP_TRACES_TIMEOUT";
 
-// this is a temporary interface to get an example working
-// use opentelemetry_capnp::span_export;
-
-// use crate::exporter::capnp::trace::CapnpTracesClient;
-// use crate::{
-//     exporter::capnp::{CapnpExporterBuilder, HasCapnpConfig},
-//     CapnpExporterBuilderSet,
-// };
-
 /// Target to which the exporter is going to send spans, defaults to https://localhost:4317/v1/traces.
 /// Learn about the relationship between this constant and default/metrics/logs at
 /// <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/protocol/exporter.md#endpoint-urls-for-otlphttp>
-
 /// Cap'n Proto exporter builder
 #[derive(Debug, Default, Clone)]
 pub struct SpanExporterBuilder<C> {
@@ -42,7 +32,7 @@ impl SpanExporterBuilder<NoExporterBuilderSet> {
     }
 
     /// With the Cap'n Proto transport.
-    pub fn with_tonic(self) -> SpanExporterBuilder<CapnpExporterBuilderSet> {
+    pub fn with_capnp(self) -> SpanExporterBuilder<CapnpExporterBuilderSet> {
         SpanExporterBuilder {
             client: CapnpExporterBuilderSet(CapnpExporterBuilder::default()),
         }
