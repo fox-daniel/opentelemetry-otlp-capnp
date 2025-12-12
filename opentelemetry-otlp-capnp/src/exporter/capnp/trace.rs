@@ -42,15 +42,32 @@ pub(crate) struct CapnpTracesClient {
     resource: opentelemetry_capnp::transform::common::capnp::ResourceAttributesWithSchema,
 }
 
+impl CapnpTracesClient {
+    pub(super) fn new(endpoint: SocketAddr, retry_policy: Option<RetryPolicy>) -> Self {
+        let client = CapnpMessageClient::new(&endpoint);
+        Self {
+            inner: Some(ClientInner { client }),
+            retry_policy: retry_policy.unwrap_or(RetryPolicy {
+                max_retries: 3,
+                initial_delay_ms: 100,
+                max_delay_ms: 1600,
+                jitter_ms: 100,
+            }),
+            resource: Default::default(),
+        }
+    }
+}
+
 #[derive(Clone)]
 struct ClientInner {
     client: CapnpMessageClient,
-    // client: trace_service::Client,
-    // include an interceptor?
+    // include an interceptor
 }
 
 #[derive(Clone)]
 struct CapnpMessageClient {
+    // TODO
+    // make this generic over the channel so that flume can also be used
     tx_export: tokio::sync::mpsc::Sender<Vec<SpanData>>,
     tx_shutdown: tokio::sync::mpsc::Sender<ShutDown>,
 }
