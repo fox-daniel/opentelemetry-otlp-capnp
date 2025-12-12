@@ -12,12 +12,15 @@ use tokio::sync::Mutex;
 use crate::connect_with_retry;
 use crate::ShutDown;
 use futures::io::AsyncReadExt;
-use opentelemetry_capnp::{capnp::capnp_rpc::trace_service, transform::trace::populate_span};
+use opentelemetry_capnp::{
+    capnp::capnp_rpc::trace_service, transform::trace::populate_scope_spans,
+};
 use std::io;
 use std::io::Write;
 use std::time::Duration;
 
 use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
+use std::collections::HashMap;
 use std::net::{SocketAddr, ToSocketAddrs};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
@@ -40,7 +43,7 @@ pub(crate) struct CapnpTracesClient {
     retry_policy: RetryPolicy,
     // #[allow(dead_code)]
     // <allow dead> would be removed once we support set_resource for metrics.
-    resource: opentelemetry_capnp::transform::common::capnp::ResourceAttributesWithSchema,
+    resource: ResourceAttributesWithSchema,
 }
 
 impl CapnpTracesClient {
@@ -69,7 +72,7 @@ struct ClientInner {
 struct CapnpMessageClient {
     // TODO
     // make this generic over the channel so that flume can also be used
-    tx_export: tokio::sync::mpsc::Sender<Vec<SpanData>>,
+    tx_export: tokio::sync::mpsc::Sender<SpanRequest>,
     tx_shutdown: tokio::sync::mpsc::Sender<ShutDown>,
 }
 
@@ -77,6 +80,12 @@ impl fmt::Debug for CapnpTracesClient {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("CapnpTracesClient")
     }
+}
+
+#[derive(Debug, Clone)]
+struct SpanRequest {
+    batch: Vec<SpanData>,
+    resource: ResourceAttributesWithSchema,
 }
 
 impl opentelemetry_sdk::trace::SpanExporter for CapnpTracesClient {
@@ -89,7 +98,10 @@ impl opentelemetry_sdk::trace::SpanExporter for CapnpTracesClient {
                     .clone()
                     .client
                     .tx_export
-                    .send(batch)
+                    .send(SpanRequest {
+                        batch,
+                        resource: &self.resource,
+                    })
                     .await
                     .map_err(|e| {
                         OTelSdkError::InternalFailure(format!(
@@ -125,7 +137,7 @@ impl CapnpMessageClient {
     pub fn new(endpoint: &SocketAddr) -> Self {
         // switch to bounded channels; careful to not have channel-loops
         let (tx_export, rx_export) =
-            mpsc::channel::<Vec<SpanData>>(SPAN_EXPORTER_MPSC_CHANNEL_BUFFER_SIZE);
+            mpsc::channel::<SpanRequest>(SPAN_EXPORTER_MPSC_CHANNEL_BUFFER_SIZE);
         let (tx_shutdown, rx_shutdown) = mpsc::channel(SPAN_EXPORTER_SHUTDOWN_CHANNEL_BUFFER_SIZE);
 
         let addr = endpoint
@@ -181,22 +193,22 @@ fn build_capnp_rpc_system(stream: TcpStream) -> RpcSystem<twoparty::VatId> {
 
 async fn export_loop(
     client: trace_service::Client,
-    mut rx_export: mpsc::Receiver<Vec<SpanData>>,
+    mut rx_export: mpsc::Receiver<SpanRequest>,
     mut rx_shutdown: mpsc::Receiver<ShutDown>,
 ) {
     loop {
         tokio::select! {
             // The recv method is cancel safe: if the other branch completes first,
             // then no messages will have been received.
-            Some(batch) = rx_export.recv() => {
-                if let Err(e) = export_batch(&client, batch).await {
+            Some(span_request) = rx_export.recv() => {
+                if let Err(e) = export_batch(&client, span_request).await {
                     let _ = writeln!(io::stdout(), "Export failed: {}", e);
                 }
             },
             Some(ShutDown) = rx_shutdown.recv() => {
                 rx_export.close();
-                while let Ok(batch) = rx_export.try_recv() {
-                    let _ = export_batch(&client, batch).await;
+                while let Ok(span_request) = rx_export.try_recv() {
+                    let _ = export_batch(&client, span_request).await;
                 }
                 break;
             },
@@ -215,16 +227,42 @@ async fn export_loop(
 // - need to return Success or Error for SpanExporter export without blocking or causing resource bloat
 async fn export_batch(
     client: &trace_service::Client,
-    batch: Vec<SpanData>,
+    span_request: SpanRequest,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut request = client.export_request();
+    let resource = span_request.resource;
+    // TODO
+    // group spans by instrumentation scope (this is an attribute of a span)
+    // for each instrumentation scope, wrap those spans into a ScopeSpans
+    // wrap the ScopeSpans with a ResourceSpans
+    // wrap that in a Vec
+    let scope_map = span_request.batch.iter().fold(
+        HashMap::new(),
+        |mut scope_map: HashMap<&opentelemetry::InstrumentationScope, Vec<&SpanData>>, span| {
+            let instrumentation = &span.instrumentation_scope;
+            scope_map.entry(instrumentation).or_default().push(span);
+            scope_map
+        },
+    );
+    // let scope_spans = opentelemetry_capnp::capnp_rpc::trace_capnp::scope_spans::Builder;
     {
-        let span_data_builder = request.get().init_request();
-        let mut spans_builder = span_data_builder.init_resource_spans(batch.len() as u32);
-        // TODO: modify below: need build resource spans with scope
-        for (idx, span) in batch.into_iter().enumerate() {
-            let span_builder = spans_builder.reborrow().get(idx as u32);
-            populate_span(span_builder, span)?;
+        let export_trace_service_request_builder = request.get().init_request();
+        // we have a single resource, so our resource spans is a vec of length one
+        let mut resource_spans_builder =
+            export_trace_service_request_builder.init_resource_spans(1u32);
+        let mut builder_for_resource_spans = resource_spans_builder.reborrow().get(0);
+        {
+            let mut resource_builder = builder_for_resource_spans.init_resource();
+            // set attributes, dropped attribute count, and entityRefs
+            resource_builder.set_attributes(resource.attributes);
+        }
+        let mut scope_spans_builder =
+            builder_for_resource_spans.init_scope_spans(scope_map.keys().len() as u32);
+        for (idx, (instrumentation, span_records)) in scope_map.into_iter().enumerate() {
+            let mut builder_for_scope_spans = scope_spans_builder.reborrow().get(idx as u32);
+            // TODO
+            // implement this function
+            populate_scope_spans(builder_for_scope_spans, span_records, instrumentation)?;
         }
     }
     // need to make OTEL complient by returning SUCCESS or FAILURE to SpanExporter.export()

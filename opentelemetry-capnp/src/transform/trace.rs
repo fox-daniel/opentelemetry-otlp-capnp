@@ -2,7 +2,7 @@ use crate::capnp::capnp_rpc::common_capnp::{self, any_value::Builder};
 use crate::capnp::capnp_rpc::trace_capnp;
 use crate::transform::common::to_nanos;
 use opentelemetry::trace::{self, SpanKind};
-use opentelemetry::{KeyValue, Value};
+use opentelemetry::{InstrumentationScope, KeyValue, Value};
 use opentelemetry_sdk::trace::SpanData;
 use std::time::UNIX_EPOCH;
 /// Populate a Span with minimal data for testing
@@ -58,6 +58,14 @@ impl From<&trace::Status> for trace_capnp::status::StatusCode {
             trace::Status::Error { .. } => trace_capnp::status::StatusCode::Error,
         }
     }
+}
+
+pub fn populate_scope_spans(
+    mut builder: trace_capnp::scope_spans::Builder,
+    span_records: Vec<&SpanData>,
+    instrumentation: &InstrumentationScope,
+) -> Result<(), Box<dyn std::error::Error>> {
+    Ok(())
 }
 
 pub fn populate_span(
