@@ -65,6 +65,35 @@ pub fn populate_scope_spans(
     span_records: Vec<&SpanData>,
     instrumentation: &InstrumentationScope,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let instrumentation_builder = builder.reborrow().init_scope();
+    populate_instrumentation_scope(instrumentation_builder, instrumentation);
+    let scope_spans_builder = builder.reborrow().init_spans(span_records.len() as u32);
+    populate_scope_spans_builder(scope_spans_builder, span_records);
+    Ok(())
+}
+
+fn populate_scope_spans_builder(
+    scope_spans_builder: capnp::struct_list::Builder<'_, trace_capnp::span::Owned>,
+    span_records: Vec<&SpanData>) -> Result<(), Box<dyn std::error::Error>> {
+    // TOOD
+    // implementat using populate spans functions
+    Ok(())
+}
+
+fn populate_instrumentation_scope(mut instrumentation_builder: common_capnp::instrumentation_scope::Builder<'_> , instrumentation_scope: &InstrumentationScope) -> Result<(), Box<dyn std::error::Error>> {
+    instrumentation_builder.set_name(instrumentation_scope.name());
+    // Check that this default is correct
+    instrumentation_builder.reborrow()
+        .set_version(instrumentation_scope.version().unwrap_or_else(Default::default));
+    let instrumentation_attributes_builder = instrumentation_builder.reborrow().init_attributes(instrumentation_scope.attributes().count() as u32)
+    populate_instrumentation_attributes(instrumentation_attributes_builder, instrumentation_scope);
+    instrumentation_builder.set_dropped_attributes_count(0);
+    Ok(())
+}
+ 
+fn populate_instrumentation_attributes(mut instrumentation_attributes_builder: capnp::struct_list::Builder<'_, common_capnp::key_value::Owned>, instrumentation: &InstrumentationScope) -> Result<(), Box<dyn std::error::Error>> {
+    // TODO
+    // implement
     Ok(())
 }
 

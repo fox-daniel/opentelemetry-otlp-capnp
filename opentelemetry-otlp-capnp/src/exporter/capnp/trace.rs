@@ -1,13 +1,13 @@
 use crate::retry::RetryPolicy;
 use core::fmt;
+use opentelemetry::InstrumentationScope;
 // the following path is different than the OTLP because this crate doesn't use an extra module
 // indrection for the rpc layer since it is all capnp
 use opentelemetry_sdk::{
     error::{OTelSdkError, OTelSdkResult},
-    trace::{SpanData, SpanExporter},
+    trace::SpanData,
+    Resource,
 };
-use std::sync::Arc;
-use tokio::sync::Mutex;
 
 use crate::connect_with_retry;
 use crate::ShutDown;
@@ -41,9 +41,7 @@ pub const CAPNP_EXPORTER_RPC_TRACES_TIMEOUT: u64 = 10;
 pub(crate) struct CapnpTracesClient {
     inner: Option<ClientInner>,
     retry_policy: RetryPolicy,
-    // #[allow(dead_code)]
-    // <allow dead> would be removed once we support set_resource for metrics.
-    resource: ResourceAttributesWithSchema,
+    resource: Resource,
 }
 
 impl CapnpTracesClient {
@@ -82,10 +80,27 @@ impl fmt::Debug for CapnpTracesClient {
     }
 }
 
+// How much of SpanRequest, ResourceSpans, and ScopeSpans can be
+// switched to references for performance improvements?
+
 #[derive(Debug, Clone)]
 struct SpanRequest {
     batch: Vec<SpanData>,
-    resource: ResourceAttributesWithSchema,
+    resource: Resource,
+}
+
+#[derive(Debug, Clone)]
+struct ResourceSpans {
+    resource: Arc<Resource>,
+    scope_spans: Vec<ScopeSpans>,
+    schema_url: String,
+}
+
+#[derive(Debug, Clone)]
+struct ScopeSpans {
+    scope: Option<InstrumentationScope>,
+    spans: Vec<SpanData>,
+    schema_url: String,
 }
 
 impl opentelemetry_sdk::trace::SpanExporter for CapnpTracesClient {
@@ -229,21 +244,9 @@ async fn export_batch(
     client: &trace_service::Client,
     span_request: SpanRequest,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let resource_spans = group_spans_by_resource_and_scope(span_request);
+    let resource: Resource = resource_spans.resource;
     let mut request = client.export_request();
-    let resource = span_request.resource;
-    // TODO
-    // group spans by instrumentation scope (this is an attribute of a span)
-    // for each instrumentation scope, wrap those spans into a ScopeSpans
-    // wrap the ScopeSpans with a ResourceSpans
-    // wrap that in a Vec
-    let scope_map = span_request.batch.iter().fold(
-        HashMap::new(),
-        |mut scope_map: HashMap<&opentelemetry::InstrumentationScope, Vec<&SpanData>>, span| {
-            let instrumentation = &span.instrumentation_scope;
-            scope_map.entry(instrumentation).or_default().push(span);
-            scope_map
-        },
-    );
     // let scope_spans = opentelemetry_capnp::capnp_rpc::trace_capnp::scope_spans::Builder;
     {
         let export_trace_service_request_builder = request.get().init_request();
@@ -254,11 +257,14 @@ async fn export_batch(
         {
             let mut resource_builder = builder_for_resource_spans.init_resource();
             // set attributes, dropped attribute count, and entityRefs
-            resource_builder.set_attributes(resource.attributes);
+            resource_builder.set_attributes(resource.iter());
+            resource_builder.set_dropped_attributes_count(0);
+            resource_builder.set_entity_refs(vec![]);
         }
+        let scope_spans = resource_spans.scope_spans;
         let mut scope_spans_builder =
-            builder_for_resource_spans.init_scope_spans(scope_map.keys().len() as u32);
-        for (idx, (instrumentation, span_records)) in scope_map.into_iter().enumerate() {
+            builder_for_resource_spans.init_scope_spans(scope_spans.len() as u32);
+        for (idx, (instrumentation, span_records)) in scope_spans.into_iter().enumerate() {
             let mut builder_for_scope_spans = scope_spans_builder.reborrow().get(idx as u32);
             // TODO
             // implement this function
@@ -274,4 +280,46 @@ async fn export_batch(
     // let reply = response.get()?.get_reply()?.get_count();
     // writeln!(std::io::stdout(), "{}", reply)?;
     Ok(())
+}
+
+pub fn group_spans_by_resource_and_scope(spans_request: SpanRequest) -> Vec<ResourceSpans> {
+    let resource = span_request.resource;
+    // TODO
+    // group spans by instrumentation scope (this is an attribute of a span)
+    // for each instrumentation scope, wrap those spans into a ScopeSpans
+    // wrap the ScopeSpans with a ResourceSpans
+    // wrap that in a Vec
+    let scope_map = span_request.batch.iter().fold(
+        HashMap::new(),
+        |mut scope_map: HashMap<&opentelemetry::InstrumentationScope, Vec<&SpanData>>, span| {
+            let instrumentation = &span.instrumentation_scope;
+            scope_map.entry(instrumentation).or_default().push(span);
+            scope_map
+        },
+    );
+
+    // Convert the grouped spans into ScopeSpans
+    // TODO:
+    // remove the clones for better performance
+    let scope_spans = scope_map
+        .into_iter()
+        .map(|(instrumentation, span_records)| ScopeSpans {
+            scope: Some((instrumentation, None).into()),
+            schema_url: instrumentation
+                .schema_url()
+                .map(ToOwned::to_owned)
+                .unwrap_or_default(),
+            spans: span_records
+                .into_iter()
+                .map(|span_data| span_data.clone().into())
+                .collect(),
+        })
+        .collect();
+
+    // Wrap ScopeSpans into a single ResourceSpans
+    vec![ResourceSpans {
+        resource: Some(resource),
+        scope_spans,
+        schema_url: resource.schema_url.clone().unwrap_or_default(),
+    }]
 }
