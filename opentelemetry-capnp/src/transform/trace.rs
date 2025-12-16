@@ -3,7 +3,10 @@ use crate::capnp::capnp_rpc::trace_capnp;
 use crate::transform::common::to_nanos;
 use opentelemetry::trace::{self, SpanKind};
 use opentelemetry::{InstrumentationScope, KeyValue, Value};
-use opentelemetry_sdk::trace::SpanData;
+use opentelemetry_sdk::{trace::SpanData, Resource};
+use std::borrow::Borrow;
+use std::iter::Iterator;
+use std::sync::Arc;
 use std::time::UNIX_EPOCH;
 /// Populate a Span with minimal data for testing
 pub fn populate_span_minimal(
@@ -58,6 +61,24 @@ impl From<&trace::Status> for trace_capnp::status::StatusCode {
             trace::Status::Error { .. } => trace_capnp::status::StatusCode::Error,
         }
     }
+}
+
+fn populate_resource(
+    resource_builder: crate::resource_capnp::resource::Builder<'_>,
+    resource: Arc<Resource>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let attributes_builder = resource_builder
+        .reborrow()
+        .init_attributes(resource.len() as u32);
+    populate_attributes(
+        attributes_builder,
+        resource
+            .iter()
+            .map(|(&key, &value)| KeyValue::new(key, value)),
+    );
+    resource_builder.set_dropped_attributes_count(0);
+    resource_builder.set_entity_refs(vec![]);
+    Ok(())
 }
 
 pub fn populate_scope_spans(
@@ -122,7 +143,7 @@ pub fn populate_span(
     // builder.set_kind(trace_capnp::span::SpanKind::SpanKindInternal);
 
     let attributes = source_span.attributes;
-    let mut attributes_builder = builder.reborrow().init_attributes(attributes.len() as u32);
+    let attributes_builder = builder.reborrow().init_attributes(attributes.len() as u32);
     populate_attributes(attributes_builder, attributes);
     builder.set_dropped_events_count(source_span.events.dropped_count);
     // TODO: events builder refactor into abstractions
@@ -135,7 +156,7 @@ pub fn populate_span(
             .reborrow()
             .set_time_unix_nano(to_nanos(event.timestamp));
         event_builder.reborrow().set_name(event.name.into_owned());
-        let mut event_attributes_builder = event_builder
+        let event_attributes_builder = event_builder
             .reborrow()
             .init_attributes(event.attributes.len() as u32);
         populate_attributes(event_attributes_builder, event.attributes);
@@ -162,7 +183,7 @@ pub fn populate_span(
         link_builder
             .reborrow()
             .set_dropped_attributes_count(link.dropped_attributes_count);
-        let mut attr_builder = link_builder
+        let attr_builder = link_builder
             .reborrow()
             .init_attributes(link.attributes.len() as u32);
         populate_attributes(attr_builder, link.attributes);
@@ -180,14 +201,19 @@ pub fn populate_span(
     Ok(())
 }
 
-fn populate_attributes(
+fn populate_attributes<I, K>(
     mut attributes_builder: capnp::struct_list::Builder<'_, crate::common_capnp::key_value::Owned>,
-    attributes: Vec<KeyValue>,
-) -> Result<(), Box<dyn std::error::Error>> {
+    attributes: I,
+) -> Result<(), Box<dyn std::error::Error>>
+where
+    I: IntoIterator<Item = K>,
+    K: Borrow<KeyValue>,
+{
     for (id, attr) in attributes.into_iter().enumerate() {
         let mut kv_builder = attributes_builder.reborrow().get(id as u32);
-        kv_builder.reborrow().set_key(attr.key.as_str());
-        populate_value_builder(kv_builder.init_value(), &attr.value)?;
+        let attr_ref: &KeyValue = attr.borrow();
+        kv_builder.reborrow().set_key(attr_ref.key.as_str());
+        populate_value_builder(kv_builder.init_value(), &attr_ref.value)?;
     }
     Ok(())
 }
