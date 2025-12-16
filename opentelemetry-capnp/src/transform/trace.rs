@@ -123,13 +123,7 @@ pub fn populate_span(
 
     let attributes = source_span.attributes;
     let mut attributes_builder = builder.reborrow().init_attributes(attributes.len() as u32);
-    // TODO: should this be more similar to the OTLP transform?
-    // `impl From<Value> for AnyValue` instead of populate_value_builder
-    for (id, attr) in attributes.into_iter().enumerate() {
-        let mut kv_builder = attributes_builder.reborrow().get(id as u32);
-        kv_builder.reborrow().set_key(attr.key.as_str());
-        populate_value_builder(kv_builder.init_value(), &attr.value)?;
-    }
+    populate_attributes(attributes_builder, attributes);
     builder.set_dropped_events_count(source_span.events.dropped_count);
     // TODO: events builder refactor into abstractions
     let mut events_builder = builder
@@ -144,11 +138,7 @@ pub fn populate_span(
         let mut event_attributes_builder = event_builder
             .reborrow()
             .init_attributes(event.attributes.len() as u32);
-        for (id, attr) in event.attributes.into_iter().enumerate() {
-            let mut kv_builder = event_attributes_builder.reborrow().get(id as u32);
-            kv_builder.set_key(attr.key.as_str());
-            populate_value_builder(kv_builder.init_value(), &attr.value)?;
-        }
+        populate_attributes(event_attributes_builder, event.attributes);
         event_builder
             .reborrow()
             .set_dropped_attributes_count(event.dropped_attributes_count);
@@ -175,12 +165,8 @@ pub fn populate_span(
         let mut attr_builder = link_builder
             .reborrow()
             .init_attributes(link.attributes.len() as u32);
-        for (id, attr) in link.attributes.into_iter().enumerate() {
-            let mut kv_builder = attr_builder.reborrow().get(id as u32);
-            kv_builder.set_key(attr.key.as_str());
-            populate_value_builder(kv_builder.init_value(), &attr.value)?;
-            // link_builder.set_flags();
-        }
+        populate_attributes(attr_builder, link.attributes);
+        // link_builder.set_flags();
     }
     //TODO:
     // - links: spanflags
@@ -191,6 +177,18 @@ pub fn populate_span(
         _ => Default::default(),
     });
 
+    Ok(())
+}
+
+fn populate_attributes(
+    mut attributes_builder: capnp::struct_list::Builder<'_, crate::common_capnp::key_value::Owned>,
+    attributes: Vec<KeyValue>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    for (id, attr) in attributes.into_iter().enumerate() {
+        let mut kv_builder = attributes_builder.reborrow().get(id as u32);
+        kv_builder.reborrow().set_key(attr.key.as_str());
+        populate_value_builder(kv_builder.init_value(), &attr.value)?;
+    }
     Ok(())
 }
 
