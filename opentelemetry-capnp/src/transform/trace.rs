@@ -8,6 +8,48 @@ use std::borrow::Borrow;
 use std::iter::Iterator;
 use std::sync::Arc;
 use std::time::UNIX_EPOCH;
+
+// How much of SpanRequest, ResourceSpans, and ScopeSpans can be
+// switched to references for performance improvements?
+
+#[derive(Debug, Clone)]
+pub struct SpanRequest {
+    pub batch: Vec<SpanData>,
+    pub resource: Resource,
+}
+
+#[derive(Debug, Clone)]
+pub struct ResourceSpans {
+    pub resource: Arc<Resource>,
+    pub scope_spans: Vec<ScopeSpans>,
+    pub schema_url: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct ScopeSpans {
+    pub scope: Option<InstrumentationScope>,
+    pub spans: Vec<SpanData>,
+    pub schema_url: String,
+}
+
+impl ScopeSpans {
+    pub fn len(&self) -> usize {
+        self.spans.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.spans.len() == 0
+    }
+
+    pub fn get_scope(&self) -> Option<&InstrumentationScope> {
+        if let Some(instrumentation) = &self.scope {
+            Some(instrumentation)
+        } else {
+            None
+        }
+    }
+}
+
 /// Populate a Span with minimal data for testing
 pub fn populate_span_minimal(
     mut builder: trace_capnp::span::Builder,
@@ -63,8 +105,8 @@ impl From<&trace::Status> for trace_capnp::status::StatusCode {
     }
 }
 
-fn populate_resource(
-    resource_builder: crate::resource_capnp::resource::Builder<'_>,
+pub fn populate_resource(
+    mut resource_builder: crate::resource_capnp::resource::Builder<'_>,
     resource: Arc<Resource>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let attributes_builder = resource_builder
@@ -74,28 +116,29 @@ fn populate_resource(
         attributes_builder,
         resource
             .iter()
-            .map(|(&key, &value)| KeyValue::new(key, value)),
-    );
+            .map(|(key, value)| KeyValue::new(key.clone(), value.clone())),
+    )?;
     resource_builder.set_dropped_attributes_count(0);
-    resource_builder.set_entity_refs(vec![]);
+    resource_builder.init_entity_refs(0);
     Ok(())
 }
 
 pub fn populate_scope_spans(
     mut builder: trace_capnp::scope_spans::Builder,
-    span_records: Vec<&SpanData>,
-    instrumentation: &InstrumentationScope,
+    scope_spans: ScopeSpans,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let instrumentation_builder = builder.reborrow().init_scope();
-    populate_instrumentation_scope(instrumentation_builder, instrumentation);
-    let scope_spans_builder = builder.reborrow().init_spans(span_records.len() as u32);
-    populate_scope_spans_builder(scope_spans_builder, span_records);
+    if let Some(instrumentation) = scope_spans.get_scope() {
+        populate_instrumentation_scope(instrumentation_builder, instrumentation)?;
+    }
+    let scope_spans_builder = builder.reborrow().init_spans(scope_spans.len() as u32);
+    populate_scope_spans_builder(scope_spans_builder, scope_spans.spans)?;
     Ok(())
 }
 
 fn populate_scope_spans_builder(
     scope_spans_builder: capnp::struct_list::Builder<'_, trace_capnp::span::Owned>,
-    span_records: Vec<&SpanData>,
+    span_records: Vec<SpanData>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // TOOD
     // implementat using populate spans functions
@@ -108,15 +151,13 @@ fn populate_instrumentation_scope(
 ) -> Result<(), Box<dyn std::error::Error>> {
     instrumentation_builder.set_name(instrumentation_scope.name());
     // Check that this default is correct
-    instrumentation_builder.reborrow().set_version(
-        instrumentation_scope
-            .version()
-            .unwrap_or_else(Default::default),
-    );
+    instrumentation_builder
+        .reborrow()
+        .set_version(instrumentation_scope.version().unwrap_or_default());
     let instrumentation_attributes_builder = instrumentation_builder
         .reborrow()
         .init_attributes(instrumentation_scope.attributes().count() as u32);
-    populate_instrumentation_attributes(instrumentation_attributes_builder, instrumentation_scope);
+    populate_instrumentation_attributes(instrumentation_attributes_builder, instrumentation_scope)?;
     instrumentation_builder.set_dropped_attributes_count(0);
     Ok(())
 }

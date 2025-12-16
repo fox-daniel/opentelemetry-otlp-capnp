@@ -1,6 +1,5 @@
 use crate::retry::RetryPolicy;
 use core::fmt;
-use opentelemetry::InstrumentationScope;
 // the following path is different than the OTLP because this crate doesn't use an extra module
 // indrection for the rpc layer since it is all capnp
 use opentelemetry_sdk::{
@@ -14,7 +13,9 @@ use crate::ShutDown;
 use futures::io::AsyncReadExt;
 use opentelemetry_capnp::{
     capnp::capnp_rpc::trace_service,
-    transform::trace::{populate_resource, populate_scope_spans},
+    transform::trace::{
+        populate_resource, populate_scope_spans, ResourceSpans, ScopeSpans, SpanRequest,
+    },
 };
 use std::io;
 use std::io::Write;
@@ -49,6 +50,7 @@ pub(crate) struct CapnpTracesClient {
 impl CapnpTracesClient {
     pub(super) fn new(endpoint: SocketAddr, retry_policy: Option<RetryPolicy>) -> Self {
         let client = CapnpMessageClient::new(&endpoint);
+        let resource = Resource::builder().build();
         Self {
             inner: Some(ClientInner { client }),
             retry_policy: retry_policy.unwrap_or(RetryPolicy {
@@ -57,7 +59,7 @@ impl CapnpTracesClient {
                 max_delay_ms: 1600,
                 jitter_ms: 100,
             }),
-            resource: Default::default(),
+            resource,
         }
     }
 }
@@ -82,29 +84,6 @@ impl fmt::Debug for CapnpTracesClient {
     }
 }
 
-// How much of SpanRequest, ResourceSpans, and ScopeSpans can be
-// switched to references for performance improvements?
-
-#[derive(Debug, Clone)]
-struct SpanRequest {
-    batch: Vec<SpanData>,
-    resource: Resource,
-}
-
-#[derive(Debug, Clone)]
-struct ResourceSpans {
-    resource: Arc<Resource>,
-    scope_spans: Vec<ScopeSpans>,
-    schema_url: String,
-}
-
-#[derive(Debug, Clone)]
-struct ScopeSpans {
-    scope: Option<InstrumentationScope>,
-    spans: Vec<SpanData>,
-    schema_url: String,
-}
-
 impl opentelemetry_sdk::trace::SpanExporter for CapnpTracesClient {
     async fn export(&self, batch: Vec<SpanData>) -> OTelSdkResult {
         // TODO
@@ -117,7 +96,7 @@ impl opentelemetry_sdk::trace::SpanExporter for CapnpTracesClient {
                     .tx_export
                     .send(SpanRequest {
                         batch,
-                        resource: &self.resource,
+                        resource: self.resource.clone(),
                     })
                     .await
                     .map_err(|e| {
@@ -142,7 +121,7 @@ impl opentelemetry_sdk::trace::SpanExporter for CapnpTracesClient {
     }
 
     fn set_resource(&mut self, resource: &opentelemetry_sdk::Resource) {
-        self.resource = resource.into();
+        self.resource = resource.clone();
     }
 }
 
@@ -250,7 +229,7 @@ async fn export_batch(
     let resource_spans = group_spans_by_resource_and_scope(span_request);
     // currently assuming that group_spans_by_resource_and_scope returns a vec of length 1
     // with a single resource
-    let resource_spans = resource_spans[0];
+    let resource_spans = resource_spans[0].clone();
     let resource: Arc<Resource> = resource_spans.resource.clone();
     let mut request = client.export_request();
     // let scope_spans = opentelemetry_capnp::capnp_rpc::trace_capnp::scope_spans::Builder;
@@ -261,19 +240,19 @@ async fn export_batch(
             export_trace_service_request_builder.init_resource_spans(1u32);
         let mut builder_for_resource_spans = resource_spans_builder.reborrow().get(0);
         {
-            let resource_builder = builder_for_resource_spans.init_resource();
+            let resource_builder = builder_for_resource_spans.reborrow().init_resource();
             // set attributes, dropped attribute count, and entityRefs
             populate_resource(resource_builder, resource);
         }
         let scope_spans_collection: Vec<ScopeSpans> = resource_spans.scope_spans;
-        let mut scope_spans_builder =
-            builder_for_resource_spans.init_scope_spans(scope_spans_collection.len() as u32);
-        // scope_spans.into_iter() is probably incorrect
-        for (idx, scope_spans) in scope_spans_collection.iter().enumerate() {
-            let mut builder_for_scope_spans = scope_spans_builder.reborrow().get(idx as u32);
-            // TODO
-            // implement this function
-            populate_scope_spans(builder_for_scope_spans, scope_spans, instrumentation)?;
+        let mut scope_spans_builder = builder_for_resource_spans
+            .reborrow()
+            .init_scope_spans(scope_spans_collection.len() as u32);
+        {
+            for (idx, scope_spans) in scope_spans_collection.into_iter().enumerate() {
+                let builder_for_scope_spans = scope_spans_builder.reborrow().get(idx as u32);
+                populate_scope_spans(builder_for_scope_spans, scope_spans)?;
+            }
         }
     }
     // need to make OTEL complient by returning SUCCESS or FAILURE to SpanExporter.export()
@@ -309,7 +288,7 @@ pub fn group_spans_by_resource_and_scope(span_request: SpanRequest) -> Vec<Resou
     let scope_spans = scope_map
         .into_iter()
         .map(|(instrumentation, span_records)| ScopeSpans {
-            scope: Some((instrumentation, None).into()),
+            scope: Some(instrumentation.clone()),
             schema_url: instrumentation
                 .schema_url()
                 .map(ToOwned::to_owned)
@@ -322,9 +301,10 @@ pub fn group_spans_by_resource_and_scope(span_request: SpanRequest) -> Vec<Resou
         .collect();
 
     // Wrap ScopeSpans into a single ResourceSpans
+    let schema_url = resource.schema_url().unwrap_or_default().to_string();
     vec![ResourceSpans {
-        resource: Some(resource),
+        resource: Arc::new(resource),
         scope_spans,
-        schema_url: resource.schema_url.clone().unwrap_or_default(),
+        schema_url,
     }]
 }
