@@ -240,7 +240,7 @@ async fn export_batch(
         let mut builder_for_resource_spans = resource_spans_builder.reborrow().get(0);
         {
             let resource_builder = builder_for_resource_spans.reborrow().init_resource();
-            populate_resource(resource_builder, resource);
+            populate_resource(resource_builder, resource)?;
         }
         let scope_spans_collection: Vec<ScopeSpans> = resource_spans.scope_spans;
         let mut scope_spans_builder = builder_for_resource_spans
@@ -284,10 +284,7 @@ pub fn group_spans_by_resource_and_scope(span_request: SpanRequest) -> Vec<Resou
                 .schema_url()
                 .map(ToOwned::to_owned)
                 .unwrap_or_default(),
-            spans: span_records
-                .into_iter()
-                .map(|span_data| span_data.clone().into())
-                .collect(),
+            spans: span_records.into_iter().cloned().collect(),
         })
         .collect();
 
