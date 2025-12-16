@@ -1,3 +1,5 @@
+// TODO:
+// remove the clones for better performance
 use crate::retry::RetryPolicy;
 use core::fmt;
 // the following path is different than the OTLP because this crate doesn't use an extra module
@@ -215,8 +217,6 @@ async fn export_loop(
 
 // TODO
 // - add retry with exponential backoff; use Arc::new(batch) and clone it for retries
-// - group spans by resource and scope
-//   - how to do this without unnecessary copies?
 // - add partial success handling
 // - allow some kind of interceptor so users can inject metadata and context
 // - put resource spans as message into a Request that includes metadata, extensions, and the message
@@ -278,8 +278,6 @@ pub fn group_spans_by_resource_and_scope(span_request: SpanRequest) -> Vec<Resou
     );
 
     // Convert the grouped spans into ScopeSpans
-    // TODO:
-    // remove the clones for better performance
     let scope_spans = scope_map
         .into_iter()
         .map(|(instrumentation, span_records)| ScopeSpans {
