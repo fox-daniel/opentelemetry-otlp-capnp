@@ -13,7 +13,8 @@ use crate::connect_with_retry;
 use crate::ShutDown;
 use futures::io::AsyncReadExt;
 use opentelemetry_capnp::{
-    capnp::capnp_rpc::trace_service, transform::trace::populate_scope_spans,
+    capnp::capnp_rpc::trace_service,
+    transform::trace::{populate_resource, populate_scope_spans},
 };
 use std::io;
 use std::io::Write;
@@ -22,6 +23,7 @@ use std::time::Duration;
 use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
 use std::collections::HashMap;
 use std::net::{SocketAddr, ToSocketAddrs};
+use std::sync::Arc;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use tokio::task::LocalSet;
@@ -240,12 +242,16 @@ async fn export_loop(
 // - allow some kind of interceptor so users can inject metadata and context
 // - put resource spans as message into a Request that includes metadata, extensions, and the message
 // - need to return Success or Error for SpanExporter export without blocking or causing resource bloat
+// - switch types to be impl traits? impl Iter<SpanData> etc
 async fn export_batch(
     client: &trace_service::Client,
     span_request: SpanRequest,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let resource_spans = group_spans_by_resource_and_scope(span_request);
-    let resource: Resource = resource_spans.resource;
+    // currently assuming that group_spans_by_resource_and_scope returns a vec of length 1
+    // with a single resource
+    let resource_spans = resource_spans[0];
+    let resource: Arc<Resource> = resource_spans.resource.clone();
     let mut request = client.export_request();
     // let scope_spans = opentelemetry_capnp::capnp_rpc::trace_capnp::scope_spans::Builder;
     {
@@ -255,20 +261,19 @@ async fn export_batch(
             export_trace_service_request_builder.init_resource_spans(1u32);
         let mut builder_for_resource_spans = resource_spans_builder.reborrow().get(0);
         {
-            let mut resource_builder = builder_for_resource_spans.init_resource();
+            let resource_builder = builder_for_resource_spans.init_resource();
             // set attributes, dropped attribute count, and entityRefs
-            resource_builder.set_attributes(resource.iter());
-            resource_builder.set_dropped_attributes_count(0);
-            resource_builder.set_entity_refs(vec![]);
+            populate_resource(resource_builder, resource);
         }
-        let scope_spans = resource_spans.scope_spans;
+        let scope_spans_collection: Vec<ScopeSpans> = resource_spans.scope_spans;
         let mut scope_spans_builder =
-            builder_for_resource_spans.init_scope_spans(scope_spans.len() as u32);
-        for (idx, (instrumentation, span_records)) in scope_spans.into_iter().enumerate() {
+            builder_for_resource_spans.init_scope_spans(scope_spans_collection.len() as u32);
+        // scope_spans.into_iter() is probably incorrect
+        for (idx, scope_spans) in scope_spans_collection.iter().enumerate() {
             let mut builder_for_scope_spans = scope_spans_builder.reborrow().get(idx as u32);
             // TODO
             // implement this function
-            populate_scope_spans(builder_for_scope_spans, span_records, instrumentation)?;
+            populate_scope_spans(builder_for_scope_spans, scope_spans, instrumentation)?;
         }
     }
     // need to make OTEL complient by returning SUCCESS or FAILURE to SpanExporter.export()
@@ -282,7 +287,7 @@ async fn export_batch(
     Ok(())
 }
 
-pub fn group_spans_by_resource_and_scope(spans_request: SpanRequest) -> Vec<ResourceSpans> {
+pub fn group_spans_by_resource_and_scope(span_request: SpanRequest) -> Vec<ResourceSpans> {
     let resource = span_request.resource;
     // TODO
     // group spans by instrumentation scope (this is an attribute of a span)
