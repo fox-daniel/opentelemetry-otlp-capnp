@@ -1,10 +1,13 @@
+use std::env;
 use std::io;
 use std::io::{ErrorKind, Write};
-use std::net::SocketAddr;
+use std::net::{SocketAddr, ToSocketAddrs};
 use std::time::Duration;
 pub(crate) mod trace;
+use crate::retry::RetryPolicy;
+use crate::span::OTEL_EXPORTER_CAPNP_TRACES_ENDPOINT;
 use crate::{ExportConfig, ExporterBuildError};
-use opentelemetry::otel_debug;
+use crate::{OTEL_EXPORTER_CAPNP_ENDPOINT, OTEL_EXPORTER_CAPNP_ENDPOINT_DEFAULT};
 
 // use crate::ExportConfig;
 /// Configuration for [capnp]
@@ -18,7 +21,7 @@ pub struct CapnpConfig {
     // pub(crate) interceptor: Option<BoxInterceptor>,
     // The retry policy to use for gRPC requests.
     // #[cfg(feature = "experimental-grpc-retry")]
-    // pub(crate) retry_policy: Option<RetryPolicy>,
+    pub(crate) retry_policy: Option<RetryPolicy>,
 }
 
 #[derive(Debug, Default)]
@@ -45,18 +48,37 @@ impl CapnpExporterBuilder {
     pub(crate) fn build_span_exporter(self) -> Result<crate::SpanExporter, ExporterBuildError> {
         use crate::exporter::capnp::trace::CapnpTracesClient;
 
-        otel_debug!(name: "TracesCapnpChannelBuilding");
-
-        // let (channel, interceptor, retry_policy) = self.build_channel(
-        //     crate::span::OTEL_EXPORTER_CAPNP_TRACES_ENDPOINT,
-        //     crate::span::OTEL_EXPORTER_CAPNP_TRACES_TIMEOUT,
-        //     // crate::span::OTEL_EXPORTER_CAPNP_TRACES_COMPRESSION,
-        //     crate::span::OTEL_EXPORTER_CAPNP_TRACES_HEADERS,
-        // )?;
-
-        let client = CapnpTracesClient::new(channel, retry_policy);
+        // otel_debug!(name: "TracesCapnpChannelBuilding");
+        let config = self.exporter_config;
+        let endpoint = Self::resolve_endpoint(OTEL_EXPORTER_CAPNP_TRACES_ENDPOINT, config.endpoint);
+        let endpoint = endpoint
+            .to_socket_addrs()
+            .expect("endpoint should convert to at least one socket address")
+            .next()
+            .expect("endpoint should be syntactically correct socket address");
+        let retry_policy = self.capnp_config.retry_policy.clone();
+        let client = CapnpTracesClient::new(endpoint, retry_policy);
 
         Ok(crate::SpanExporter::from_capnp(client))
+    }
+
+    fn resolve_endpoint(default_endpoint_var: &str, provided_endpoint: Option<String>) -> String {
+        // resolving endpoint string
+        // grpc doesn't have a "path" like http(See https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md)
+        // the path of grpc calls are based on the protobuf service definition
+        // so we won't append one for default grpc endpoints
+        // If users for some reason want to use a custom path, they can use env var or builder to pass it
+        //
+        // programmatic configuration overrides any value set via environment variables
+        if let Some(endpoint) = provided_endpoint.filter(|s| !s.is_empty()) {
+            endpoint
+        } else if let Ok(endpoint) = env::var(default_endpoint_var) {
+            endpoint
+        } else if let Ok(endpoint) = env::var(OTEL_EXPORTER_CAPNP_ENDPOINT) {
+            endpoint
+        } else {
+            OTEL_EXPORTER_CAPNP_ENDPOINT_DEFAULT.to_string()
+        }
     }
 }
 
