@@ -232,7 +232,6 @@ async fn export_batch(
     let resource_spans = resource_spans[0].clone();
     let resource: Arc<Resource> = resource_spans.resource.clone();
     let mut request = client.export_request();
-    // let scope_spans = opentelemetry_capnp::capnp_rpc::trace_capnp::scope_spans::Builder;
     {
         let export_trace_service_request_builder = request.get().init_request();
         // we have a single resource, so our resource spans is a vec of length one
@@ -241,7 +240,6 @@ async fn export_batch(
         let mut builder_for_resource_spans = resource_spans_builder.reborrow().get(0);
         {
             let resource_builder = builder_for_resource_spans.reborrow().init_resource();
-            // set attributes, dropped attribute count, and entityRefs
             populate_resource(resource_builder, resource);
         }
         let scope_spans_collection: Vec<ScopeSpans> = resource_spans.scope_spans;

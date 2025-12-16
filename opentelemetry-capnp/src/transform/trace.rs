@@ -133,15 +133,18 @@ pub fn populate_scope_spans(
     }
     let scope_spans_builder = builder.reborrow().init_spans(scope_spans.len() as u32);
     populate_scope_spans_builder(scope_spans_builder, scope_spans.spans)?;
+    builder.reborrow().set_schema_url(scope_spans.schema_url);
     Ok(())
 }
 
 fn populate_scope_spans_builder(
-    scope_spans_builder: capnp::struct_list::Builder<'_, trace_capnp::span::Owned>,
+    mut scope_spans_builder: capnp::struct_list::Builder<'_, trace_capnp::span::Owned>,
     span_records: Vec<SpanData>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // TOOD
-    // implementat using populate spans functions
+    for (idx, span) in span_records.into_iter().enumerate() {
+        let span_builder = scope_spans_builder.reborrow().get(idx as u32);
+        populate_span(span_builder, span)?;
+    }
     Ok(())
 }
 
@@ -150,6 +153,7 @@ fn populate_instrumentation_scope(
     instrumentation_scope: &InstrumentationScope,
 ) -> Result<(), Box<dyn std::error::Error>> {
     instrumentation_builder.set_name(instrumentation_scope.name());
+    // TODO
     // Check that this default is correct
     instrumentation_builder
         .reborrow()
@@ -157,20 +161,11 @@ fn populate_instrumentation_scope(
     let instrumentation_attributes_builder = instrumentation_builder
         .reborrow()
         .init_attributes(instrumentation_scope.attributes().count() as u32);
-    populate_instrumentation_attributes(instrumentation_attributes_builder, instrumentation_scope)?;
+    populate_attributes(
+        instrumentation_attributes_builder,
+        instrumentation_scope.attributes(),
+    )?;
     instrumentation_builder.set_dropped_attributes_count(0);
-    Ok(())
-}
-
-fn populate_instrumentation_attributes(
-    mut instrumentation_attributes_builder: capnp::struct_list::Builder<
-        '_,
-        common_capnp::key_value::Owned,
-    >,
-    instrumentation: &InstrumentationScope,
-) -> Result<(), Box<dyn std::error::Error>> {
-    // TODO
-    // implement
     Ok(())
 }
 
@@ -200,7 +195,7 @@ pub fn populate_span(
 
     let attributes = source_span.attributes;
     let attributes_builder = builder.reborrow().init_attributes(attributes.len() as u32);
-    populate_attributes(attributes_builder, attributes);
+    populate_attributes(attributes_builder, attributes)?;
     builder.set_dropped_events_count(source_span.events.dropped_count);
     // TODO: events builder refactor into abstractions
     let mut events_builder = builder
@@ -215,7 +210,7 @@ pub fn populate_span(
         let event_attributes_builder = event_builder
             .reborrow()
             .init_attributes(event.attributes.len() as u32);
-        populate_attributes(event_attributes_builder, event.attributes);
+        populate_attributes(event_attributes_builder, event.attributes)?;
         event_builder
             .reborrow()
             .set_dropped_attributes_count(event.dropped_attributes_count);
@@ -242,7 +237,7 @@ pub fn populate_span(
         let attr_builder = link_builder
             .reborrow()
             .init_attributes(link.attributes.len() as u32);
-        populate_attributes(attr_builder, link.attributes);
+        populate_attributes(attr_builder, link.attributes)?;
         // link_builder.set_flags();
     }
     //TODO:
