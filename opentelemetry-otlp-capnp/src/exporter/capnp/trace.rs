@@ -110,7 +110,7 @@ impl opentelemetry_sdk::trace::SpanExporter for CapnpTracesClient {
                 // Need to surface errors returned from tx_export.send()
                 Ok(())
             }
-            None => return OTelSdkResult::Err(OTelSdkError::AlreadyShutdown),
+            None => OTelSdkResult::Err(OTelSdkError::AlreadyShutdown),
         }
     }
     fn shutdown(&mut self) -> OTelSdkResult {
