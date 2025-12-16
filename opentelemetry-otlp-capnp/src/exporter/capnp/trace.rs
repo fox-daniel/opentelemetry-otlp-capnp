@@ -268,11 +268,6 @@ async fn export_batch(
 
 pub fn group_spans_by_resource_and_scope(span_request: SpanRequest) -> Vec<ResourceSpans> {
     let resource = span_request.resource;
-    // TODO
-    // group spans by instrumentation scope (this is an attribute of a span)
-    // for each instrumentation scope, wrap those spans into a ScopeSpans
-    // wrap the ScopeSpans with a ResourceSpans
-    // wrap that in a Vec
     let scope_map = span_request.batch.iter().fold(
         HashMap::new(),
         |mut scope_map: HashMap<&opentelemetry::InstrumentationScope, Vec<&SpanData>>, span| {
