@@ -1,16 +1,24 @@
 use criterion::Throughput;
 use criterion::{criterion_group, criterion_main};
 use criterion::{BatchSize, Criterion};
+use opentelemetry_capnp::transform::trace::SpanRequest;
+use opentelemetry_otlp_capnp::{SpanExporter, SpanReceiver, WithExportConfig};
 use utilities::capnp::FakeCapnp;
+
+const ENDPOINT = "127.0.0.1:4317";
 
 #[derive(Clone)]
 struct TestInput {
-    rb: u32,
+    span_exporter: SpanExporter,
+    request: SpanRequest,
 }
 
 impl TestInput {
-    fn new() -> Self {
-        TestInput { rb: 0 }
+    fn new(span_exporter: SpanExporter, request: SpanRequest) -> Self {
+        TestInput {
+            span_exporter,
+            request,
+         }
     }
 
     fn export(&self) -> Result<(), Box<dyn std::error::Error>> {
@@ -19,6 +27,8 @@ impl TestInput {
 }
 
 fn export_spans(c: &mut Criterion) {
+    let exporter = SpanExporter::builder().with_capnp().with_endpoint(ENDPOINT).build().expect("build SpanExporter with endpoint: {ENDPOINT}");
+    let receiver = SpanReceiver::new(ENDPOINT);
     let req_small = FakeCapnp::trace_service_request_with_spans(1, 1);
     let input = [("small", req_small)];
     let mut group = c.benchmark_group("export spans");

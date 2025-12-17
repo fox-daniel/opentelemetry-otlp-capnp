@@ -70,12 +70,12 @@ impl HasCapnpConfig for SpanExporterBuilder<CapnpExporterBuilderSet> {
 /// The change is required for Cap'n Proto because the Cap'n Proto SpanExporter
 /// is not Send. The Cap'n Proto RPC client used to export SpanData
 /// is placed on a dedicated thread and all SpanData is sent to it
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SpanExporter {
     client: SupportedTransportClient,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum SupportedTransportClient {
     Capnp(CapnpTracesClient),
 }
