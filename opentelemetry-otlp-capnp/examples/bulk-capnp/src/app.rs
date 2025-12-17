@@ -107,7 +107,7 @@ async fn inner_function(i: u64) {
 fn init_traces() -> io::Result<SdkTracerProvider> {
     let addr = ADDRESS.to_socket_addrs().unwrap().next().unwrap();
 
-    let exporter = SpanExporter::new(&addr);
+    let exporter = SpanExporter::builder().with_capnp().build().unwrap();
     Ok(SdkTracerProvider::builder()
         .with_resource(get_resource())
         .with_batch_exporter(exporter)

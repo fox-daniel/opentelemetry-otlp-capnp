@@ -35,3 +35,7 @@ path = "examples/basic-otlp-trace"
 [[example]]
 name = "basic-capnp"
 path = "examples/basic-capnp"
+
+[[example]]
+name = "bulk-capnp"
+path = "examples/bulk-capnp"

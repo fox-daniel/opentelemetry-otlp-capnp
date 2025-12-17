@@ -119,7 +119,7 @@ fn default_protocol() -> Protocol {
 /// # #[cfg(all(feature = "trace", feature = "rpc-capnp"))]
 /// # {
 /// use crate::opentelemetry_otlp::WithExportConfig;
-/// let exporter_builder = opentelemetry_otlp::SpanExporter::builder()
+/// let exporter_builder = opentelemetry_otlp_capnp::SpanExporter::builder()
 ///     .with_capnp()
 ///     .with_endpoint("http://localhost:7201");
 /// # }
