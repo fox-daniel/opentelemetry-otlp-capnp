@@ -26,6 +26,7 @@ capnp = { workspace = true }
 
 [dev-dependencies]
 criterion.workspace = true
+utilities = { path = "utilities" }
 
 [[example]]
 name = "basic-otlp"
