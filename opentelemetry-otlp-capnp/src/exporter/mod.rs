@@ -146,3 +146,27 @@ pub trait WithExportConfig {
     /// Note: Programmatically setting this will override any value set via environment variables.
     fn with_export_config(self, export_config: ExportConfig) -> Self;
 }
+
+impl<B: HasExportConfig> WithExportConfig for B {
+    fn with_endpoint<T: Into<String>>(mut self, endpoint: T) -> Self {
+        self.export_config().endpoint = Some(endpoint.into());
+        self
+    }
+
+    fn with_protocol(mut self, protocol: Protocol) -> Self {
+        self.export_config().protocol = protocol;
+        self
+    }
+
+    fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.export_config().timeout = Some(timeout);
+        self
+    }
+
+    fn with_export_config(mut self, exporter_config: ExportConfig) -> Self {
+        self.export_config().endpoint = exporter_config.endpoint;
+        self.export_config().protocol = exporter_config.protocol;
+        self.export_config().timeout = exporter_config.timeout;
+        self
+    }
+}
