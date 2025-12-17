@@ -6,7 +6,6 @@ members = [
     "opentelemetry-otlp-capnp/examples/basic-otlp-trace",
     "opentelemetry-otlp-capnp/examples/basic-capnp",
     "opentelemetry-otlp-capnp/examples/bulk-capnp",
-
 ]
 resolver = "2"
 
@@ -22,3 +21,4 @@ opentelemetry-capnp = { path = "opentelemetry-capnp", version = "0.1"}
 opentelemetry-otlp-capnp = { path = "opentelemetry-otlp-capnp", version = "0.1" }
 capnp = "0.23"
 capnp-rpc = "0.23"
+criterion = "0.5"

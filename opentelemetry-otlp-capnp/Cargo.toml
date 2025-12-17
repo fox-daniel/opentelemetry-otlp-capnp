@@ -24,6 +24,9 @@ opentelemetry-capnp = { workspace = true }
 capnp-rpc = { workspace = true }
 capnp = { workspace = true }
 
+[dev-dependencies]
+criterion.workspace = true
+
 [[example]]
 name = "basic-otlp"
 path = "examples/basic-otlp"
@@ -39,3 +42,10 @@ path = "examples/basic-capnp"
 [[example]]
 name = "bulk-capnp"
 path = "examples/bulk-capnp"
+
+[[bench]]
+name = "bulk-span-export"
+harness = false
+
+[lib]
+bench = false
