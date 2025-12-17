@@ -1,16 +1,13 @@
-use opentelemetry::trace::{TraceContextExt, Tracer};
 use opentelemetry::KeyValue;
 use opentelemetry::{global, InstrumentationScope};
-use opentelemetry_otlp_capnp::SpanExporter;
+use opentelemetry_otlp_capnp::{SpanExporter, WithExportConfig};
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use opentelemetry_sdk::Resource;
 use std::io;
 use std::io::Write;
-use std::net::ToSocketAddrs;
 use std::sync::OnceLock;
 use std::time::Duration;
 use tokio::task::JoinSet;
-use tracing::instrument::WithSubscriber;
 use tracing::{event, field, info, info_span, instrument, Instrument, Level, Span};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
@@ -105,9 +102,11 @@ async fn inner_function(i: u64) {
 }
 
 fn init_traces() -> io::Result<SdkTracerProvider> {
-    let addr = ADDRESS.to_socket_addrs().unwrap().next().unwrap();
-
-    let exporter = SpanExporter::builder().with_capnp().build().unwrap();
+    let exporter = SpanExporter::builder()
+        .with_capnp()
+        .with_endpoint(ADDRESS)
+        .build()
+        .unwrap();
     Ok(SdkTracerProvider::builder()
         .with_resource(get_resource())
         .with_batch_exporter(exporter)
