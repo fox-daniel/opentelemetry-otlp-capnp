@@ -1,7 +1,7 @@
 use capnp::capability::Promise;
 use capnp_rpc::{pry, rpc_twoparty_capnp, twoparty, RpcSystem};
 use futures::io::AsyncReadExt;
-use opentelemetry_capnp::span_export;
+use opentelemetry_capnp::capnp::capnp_rpc::trace_service;
 use std::io::Write;
 use std::net::{SocketAddr, ToSocketAddrs};
 
@@ -54,7 +54,7 @@ impl SpanReceiver {
             local.block_on(&rt, async {
                 let listener = tokio::net::TcpListener::bind(self.addr).await.unwrap();
                 // let client: trace_service::Client = capnp_rpc::new_client(SpanReceiver);
-                let client: span_export::Client = capnp_rpc::new_client(self);
+                let client: trace_service::Client = capnp_rpc::new_client(self);
 
                 loop {
                     let (stream, _) = listener.accept().await.unwrap();
@@ -69,39 +69,47 @@ impl SpanReceiver {
 }
 
 /// Give the SpanReceiver the capability of receiving a
-/// `send_span_data` call from the client.
+/// `export` call from the client.
 ///
 /// Capabilities of the server are implemented from the
 /// perspective of the client calling those capabilities.
-impl span_export::Server for SpanReceiver {
-    fn send_span_data(
+impl trace_service::Server for SpanReceiver {
+    fn export(
         self: std::rc::Rc<Self>,
-        params: span_export::SendSpanDataParams,
-        mut results: span_export::SendSpanDataResults,
+        params: trace_service::ExportParams,
+        mut results: trace_service::ExportResults,
     ) -> impl futures::Future<Output = Result<(), capnp::Error>> + 'static {
         let request = pry!(params.get());
         let request_data = pry!(request.get_request());
-        let spans = pry!(request_data.get_spans());
+        // let spans = pry!(request_data.get_spans());
+        let resource_spans = pry!(request_data.get_resource_spans());
+        let first_resource_span = resource_spans.get(0);
+        let scope_spans = first_resource_span.get_scope_spans();
         pry!(writeln!(
             std::io::stdout(),
             "received {} spans on {}",
-            spans.len(),
+            scope_spans.iter().count(),
             std::process::id()
         ));
-        for span in spans.iter() {
+        for span in scope_spans.iter() {
             pry!(writeln!(std::io::stdout(), "{:#?}", span));
         }
         pry!(writeln!(std::io::stdout(), "finished receiving spans"));
 
-        let mut reply = results.get().init_reply();
-        reply.set_count(spans.len() as u16);
+        let response_builder = results.get().init_response();
+        let mut partial_success_builder = response_builder.init_partial_success();
+        // This needs to be calculated instead of set arbitrarily!
+        let num_rejected_spans = 0;
+        partial_success_builder
+            .reborrow()
+            .set_rejected_spans(num_rejected_spans);
         Promise::ok(())
     }
 }
 
 async fn spawn_local_rpc_system_to_handle_stream(
     stream: tokio::net::TcpStream,
-    client: span_export::Client,
+    client: trace_service::Client,
 ) {
     let (reader, writer) = tokio_util::compat::TokioAsyncReadCompatExt::compat(stream).split();
 

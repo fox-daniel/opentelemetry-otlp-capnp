@@ -3,25 +3,6 @@
 using Common = import "../../common/v1/common.capnp";
 using Resource = import "../../resource/v1/resource.capnp";
 
-
-# BEGIN Temporary schema elements to get an example working; later this SpanData will
-# get replaced by using TracesData -> ResourceSpans -> ScopeSpans
-interface SpanExport {
-  
-  struct SpanData {
-    spans @0 :List(Span);
-  }
-
-  struct SpanDataReply {
-    count @0 :UInt16;
-  }
-
-  sendSpanData @0 (request: SpanData) -> (reply: SpanDataReply);
-}
-
-# END Temporary schema elements
-
-
 # TracesData represents the traces data that can be stored in a persistent storage,
 # OR can be embedded by other protocols that transfer OTLP traces data but do
 # not implement the OTLP protocol.

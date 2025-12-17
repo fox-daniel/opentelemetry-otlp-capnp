@@ -1,6 +1,6 @@
 use opentelemetry_otlp_capnp::SpanReceiver;
 
-const TEST_ADDRESS: &str = "127.0.0.1:8080";
+const TEST_ADDRESS: &str = "127.0.0.1:4317";
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn std::error::Error>> {

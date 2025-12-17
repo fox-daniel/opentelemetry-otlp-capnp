@@ -2,7 +2,7 @@ mod exporter;
 mod receiver;
 pub mod retry;
 mod span;
-pub use crate::exporter::capnp::CapnpConfig;
+pub use crate::exporter::capnp::{connect_with_retry, CapnpConfig, CapnpExporterBuilder};
 pub use crate::exporter::ExporterBuildError;
 pub use crate::receiver::SpanReceiver;
 pub use crate::span::{
@@ -25,14 +25,14 @@ pub use crate::exporter::{
     OTEL_EXPORTER_CAPNP_TIMEOUT, OTEL_EXPORTER_CAPNP_TIMEOUT_DEFAULT,
 };
 
-// /// Type to hold the [CapnpExporterBuilder] and indicate it has been set.
-// ///
+/// Type to hold the [CapnpExporterBuilder] and indicate it has been set.
+///
 // /// Allowing access to [CapnpExporterBuilder] specific configuration methods.
 // #[cfg(feature = "rpc-capnp")]
 // This is for clippy to work with only the rpc-capnp feature enabled
 // #[allow(unused)]
-// #[derive(Debug, Default)]
-// pub struct CapnpExporterBuilderSet(CapnpExporterBuilder);
+#[derive(Debug, Default)]
+pub struct CapnpExporterBuilderSet(CapnpExporterBuilder);
 
 /// Type to indicate the builder does not have a client set.
 #[derive(Debug, Default, Clone)]

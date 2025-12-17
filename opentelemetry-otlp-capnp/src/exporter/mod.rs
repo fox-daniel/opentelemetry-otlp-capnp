@@ -1,3 +1,4 @@
+use crate::exporter::capnp::CapnpExporterBuilder;
 use crate::Protocol;
 use std::time::Duration;
 use thiserror::Error;
@@ -89,18 +90,18 @@ pub enum ExporterBuildError {
     InternalFailure(String),
 }
 
-// /// Provide access to the [ExportConfig] field within the exporter builders.
-// pub trait HasExportConfig {
-//     /// Return a mutable reference to the [ExportConfig] within the exporter builders.
-//     fn export_config(&mut self) -> &mut ExportConfig;
-// }
+/// Provide access to the [ExportConfig] field within the exporter builders.
+pub trait HasExportConfig {
+    /// Return a mutable reference to the [ExportConfig] within the exporter builders.
+    fn export_config(&mut self) -> &mut ExportConfig;
+}
 
-// /// Provide [ExportConfig] access to the [CapnpExporterBuilder].
-// impl HasExportConfig for CapnpExporterBuilder {
-//     fn export_config(&mut self) -> &mut ExportConfig {
-//         &mut self.exporter_config
-//     }
-// }
+/// Provide [ExportConfig] access to the [CapnpExporterBuilder].
+impl HasExportConfig for CapnpExporterBuilder {
+    fn export_config(&mut self) -> &mut ExportConfig {
+        &mut self.exporter_config
+    }
+}
 
 /// default protocol based on enabled features
 fn default_protocol() -> Protocol {
@@ -118,7 +119,7 @@ fn default_protocol() -> Protocol {
 /// # #[cfg(all(feature = "trace", feature = "rpc-capnp"))]
 /// # {
 /// use crate::opentelemetry_otlp::WithExportConfig;
-/// let exporter_builder = opentelemetry_otlp::SpanExporter::builder()
+/// let exporter_builder = opentelemetry_otlp_capnp::SpanExporter::builder()
 ///     .with_capnp()
 ///     .with_endpoint("http://localhost:7201");
 /// # }
@@ -144,4 +145,28 @@ pub trait WithExportConfig {
     ///
     /// Note: Programmatically setting this will override any value set via environment variables.
     fn with_export_config(self, export_config: ExportConfig) -> Self;
+}
+
+impl<B: HasExportConfig> WithExportConfig for B {
+    fn with_endpoint<T: Into<String>>(mut self, endpoint: T) -> Self {
+        self.export_config().endpoint = Some(endpoint.into());
+        self
+    }
+
+    fn with_protocol(mut self, protocol: Protocol) -> Self {
+        self.export_config().protocol = protocol;
+        self
+    }
+
+    fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.export_config().timeout = Some(timeout);
+        self
+    }
+
+    fn with_export_config(mut self, exporter_config: ExportConfig) -> Self {
+        self.export_config().endpoint = exporter_config.endpoint;
+        self.export_config().protocol = exporter_config.protocol;
+        self.export_config().timeout = exporter_config.timeout;
+        self
+    }
 }

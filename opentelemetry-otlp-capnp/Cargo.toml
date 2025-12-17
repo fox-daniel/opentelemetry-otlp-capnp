@@ -17,7 +17,7 @@ rust-version = "1.75.0"
 opentelemetry = { workspace = true} 
 opentelemetry_sdk = { workspace = true} 
 thiserror = { workspace = true} 
-tokio = { workspace = true, features = ["sync", "rt", "macros", "net"] }
+tokio = { workspace = true, features = ["sync", "rt", "macros", "net", "time"] }
 tokio-util = { workspace = true, features = ["compat"] }
 futures = {workspace = true }
 opentelemetry-capnp = { workspace = true }
@@ -35,3 +35,7 @@ path = "examples/basic-otlp-trace"
 [[example]]
 name = "basic-capnp"
 path = "examples/basic-capnp"
+
+[[example]]
+name = "bulk-capnp"
+path = "examples/bulk-capnp"
