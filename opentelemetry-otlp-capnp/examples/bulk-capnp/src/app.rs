@@ -12,7 +12,7 @@ use tracing::{event, field, info, info_span, instrument, Instrument, Level, Span
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
 
-const ADDRESS: &str = "127.0.0.1:8080";
+const ADDRESS: &str = "127.0.0.1:4317";
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
