@@ -4,4 +4,7 @@ version = "0.0.1"
 edition = "2021"
 
 [dependencies]
-
+opentelemetry-otlp-capnp = { path = ".."}
+opentelemetry-capnp = { path = "../../opentelemetry-capnp" }
+opentelemetry_sdk.workspace = true
+opentelemetry.workspace = true

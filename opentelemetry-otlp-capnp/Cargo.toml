@@ -27,7 +27,7 @@ capnp = { workspace = true }
 [dev-dependencies]
 criterion.workspace = true
 utilities = { path = "utilities" }
-
+tokio = { workspace = true, features = ["rt-multi-thread"] }
 [[example]]
 name = "basic-otlp"
 path = "examples/basic-otlp"

@@ -1,14 +1,16 @@
-use criterion::Throughput;
 use criterion::{criterion_group, criterion_main};
 use criterion::{BatchSize, Criterion};
 use opentelemetry_capnp::transform::trace::SpanRequest;
 use opentelemetry_otlp_capnp::{SpanExporter, SpanReceiver, WithExportConfig};
+use opentelemetry_sdk::trace::SpanExporter as _;
+use tokio::runtime::Runtime;
 use utilities::capnp::FakeCapnp;
 
-const ENDPOINT = "127.0.0.1:4317";
+const ENDPOINT: &str = "127.0.0.1:4317";
 
 #[derive(Clone)]
 struct TestInput {
+    // may want to switch this field to a builder that can be used for each element of the bench groups independently
     span_exporter: SpanExporter,
     request: SpanRequest,
 }
@@ -18,24 +20,35 @@ impl TestInput {
         TestInput {
             span_exporter,
             request,
-         }
-    }
-
-    fn export(&self) -> Result<(), Box<dyn std::error::Error>> {
-        Ok(())
+        }
     }
 }
 
 fn export_spans(c: &mut Criterion) {
-    let exporter = SpanExporter::builder().with_capnp().with_endpoint(ENDPOINT).build().expect("build SpanExporter with endpoint: {ENDPOINT}");
-    let receiver = SpanReceiver::new(ENDPOINT);
-    let req_small = FakeCapnp::trace_service_request_with_spans(1, 1);
+    let _receiver = SpanReceiver::new(ENDPOINT);
+    let req_small = FakeCapnp::trace_service_request_with_spans(1);
     let input = [("small", req_small)];
     let mut group = c.benchmark_group("export spans");
-    for size_and_req in input.iter() {
-        group.throughput(Throughput::Bytes(size_and_req.1.encoded_len() as u64));
-        group.bench_function(format!("export spans {}", size_and_req.0), move |b| {
-            b.iter_batched(|| TestInput::new(), |ti| ti.export(), BatchSize::SmallInput)
+    for (name, req) in input.into_iter() {
+        group.bench_function(format!("export spans {}", name), move |b| {
+            b.iter_batched(
+                || {
+                    TestInput::new(
+                        SpanExporter::builder()
+                            .with_capnp()
+                            .with_endpoint(ENDPOINT)
+                            .build()
+                            .expect("build SpanExporter with endpoint: {ENDPOINT}"),
+                        req.clone(),
+                    )
+                },
+                |ti| {
+                    Runtime::new()
+                        .expect("able to create new runtime")
+                        .block_on(async { ti.span_exporter.export(ti.request.batch).await })
+                },
+                BatchSize::SmallInput,
+            )
         });
     }
     group.finish();
