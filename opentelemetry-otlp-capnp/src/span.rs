@@ -44,7 +44,7 @@ impl SpanExporterBuilder<CapnpExporterBuilderSet> {
     /// Build the [SpanExporter] with the Cap'n Proto transport.
     pub fn build(self) -> Result<SpanExporter, ExporterBuildError> {
         let span_exporter = self.client.0.build_span_exporter()?;
-        opentelemetry::otel_debug!(name: "SpanExporterBuilt");
+        // opentelemetry::otel_debug!(name: "SpanExporterBuilt");
         Ok(span_exporter)
     }
 }
