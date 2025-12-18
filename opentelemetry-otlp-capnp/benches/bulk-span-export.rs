@@ -1,4 +1,4 @@
-use criterion::{criterion_group, criterion_main};
+use criterion::{criterion_group, criterion_main, BenchmarkId};
 use criterion::{BatchSize, Criterion};
 use opentelemetry_capnp::transform::trace::SpanRequest;
 use opentelemetry_otlp_capnp::{SpanExporter, SpanReceiver, WithExportConfig};
@@ -34,7 +34,7 @@ fn export_spans(c: &mut Criterion) {
     let input = [("small", req_small)];
     let mut group = c.benchmark_group("export spans");
     for (name, req) in input.into_iter() {
-        group.bench_function(format!("export_spans_{}", name), |b| {
+        group.bench_function(BenchmarkId::new("export_spans", name), |b| {
             let exporter = SpanExporter::builder()
                 .with_capnp()
                 .with_endpoint(ENDPOINT)
