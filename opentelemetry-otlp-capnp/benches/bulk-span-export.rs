@@ -8,7 +8,7 @@ use tokio::runtime::Runtime;
 use utilities::capnp::FakeCapnp;
 
 const CAPNP_ENDPOINT: &str = "127.0.0.1:4318";
-const OTLP_ENDPOINT: &str = "127.0.0.1:4317";
+const OTLP_ENDPOINT: &str = "http://127.0.0.1:4317";
 
 #[derive(Clone)]
 struct TestInput {
