@@ -35,17 +35,13 @@ fn export_spans(c: &mut Criterion) {
     let mut group = c.benchmark_group("export spans");
     for (name, req) in input.into_iter() {
         group.bench_function(format!("export spans {}", name), |b| {
+            let exporter = SpanExporter::builder()
+                .with_capnp()
+                .with_endpoint(ENDPOINT)
+                .build()
+                .expect("build SpanExporter with endpoint: {ENDPOINT}");
             b.iter_batched(
-                || {
-                    TestInput::new(
-                        SpanExporter::builder()
-                            .with_capnp()
-                            .with_endpoint(ENDPOINT)
-                            .build()
-                            .expect("build SpanExporter with endpoint: {ENDPOINT}"),
-                        req.clone(),
-                    )
-                },
+                || TestInput::new(exporter.clone(), req.clone()),
                 |ti| rt.block_on(async { ti.span_exporter.export(ti.request.batch).await }),
                 BatchSize::SmallInput,
             )
