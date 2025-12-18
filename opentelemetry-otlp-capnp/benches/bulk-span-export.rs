@@ -25,12 +25,16 @@ impl TestInput {
 }
 
 fn export_spans(c: &mut Criterion) {
-    let _receiver = SpanReceiver::new(ENDPOINT);
+    let rt = Runtime::new().expect("able to create new runtime");
+    let _span_receiver = SpanReceiver::new(ENDPOINT)
+        .start()
+        .map_err(|e| format!("Failed to start SpanReceiver: {e}"));
+    std::thread::sleep(std::time::Duration::from_millis(100));
     let req_small = FakeCapnp::trace_service_request_with_spans(1);
     let input = [("small", req_small)];
     let mut group = c.benchmark_group("export spans");
     for (name, req) in input.into_iter() {
-        group.bench_function(format!("export spans {}", name), move |b| {
+        group.bench_function(format!("export spans {}", name), |b| {
             b.iter_batched(
                 || {
                     TestInput::new(
@@ -42,11 +46,7 @@ fn export_spans(c: &mut Criterion) {
                         req.clone(),
                     )
                 },
-                |ti| {
-                    Runtime::new()
-                        .expect("able to create new runtime")
-                        .block_on(async { ti.span_exporter.export(ti.request.batch).await })
-                },
+                |ti| rt.block_on(async { ti.span_exporter.export(ti.request.batch).await }),
                 BatchSize::SmallInput,
             )
         });
