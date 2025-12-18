@@ -6,9 +6,11 @@ use opentelemetry_otlp_capnp::{SpanExporter, SpanReceiver, WithExportConfig as _
 use opentelemetry_sdk::trace::SpanExporter as _;
 use tokio::runtime::Runtime;
 use utilities::capnp::FakeCapnp;
+use utilities::otlp;
 
 const CAPNP_ENDPOINT: &str = "127.0.0.1:4318";
 const OTLP_ENDPOINT: &str = "http://127.0.0.1:4317";
+const OTLP_RECEIVER_ADDR: &str = "127.0.0.1:4317";
 
 #[derive(Clone)]
 struct TestInput {
@@ -60,10 +62,9 @@ fn span_export_comparison(c: &mut Criterion) {
     let _capnp_span_receiver = SpanReceiver::new(CAPNP_ENDPOINT)
         .start()
         .map_err(|e| format!("Failed to start SpanReceiver: {e}"));
-    // For the OTLP receiver we run an OTEL collector.
-    // let _otlp_span_receiver = SpanReceiver::new(OTLP_ENDPOINT)
-    //     .start()
-    //     .map_err(|e| format!("Failed to start SpanReceiver: {e}"));
+    let _otlp_receiver = otlp::MinimalOtlpReceiver::new(OTLP_RECEIVER_ADDR)
+        .start()
+        .expect("Failed to start OTLP receiver");
     std::thread::sleep(std::time::Duration::from_millis(100));
     let req_small = FakeCapnp::trace_service_request_with_spans(1);
     let req_medium = FakeCapnp::trace_service_request_with_spans(10);

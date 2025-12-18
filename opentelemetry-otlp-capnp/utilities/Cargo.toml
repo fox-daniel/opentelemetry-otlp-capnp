@@ -8,3 +8,6 @@ opentelemetry-otlp-capnp = { path = ".."}
 opentelemetry-capnp = { path = "../../opentelemetry-capnp" }
 opentelemetry_sdk.workspace = true
 opentelemetry.workspace = true
+tonic = "0.11"
+opentelemetry-proto = { version = "0.6", features = ["gen-tonic", "trace"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
