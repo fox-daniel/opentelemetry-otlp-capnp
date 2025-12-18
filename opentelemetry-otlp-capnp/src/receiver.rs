@@ -85,16 +85,16 @@ impl trace_service::Server for SpanReceiver {
         let resource_spans = pry!(request_data.get_resource_spans());
         let first_resource_span = resource_spans.get(0);
         let scope_spans = first_resource_span.get_scope_spans();
-        pry!(writeln!(
-            std::io::stdout(),
-            "received {} spans on {}",
-            scope_spans.iter().count(),
-            std::process::id()
-        ));
-        for span in scope_spans.iter() {
-            pry!(writeln!(std::io::stdout(), "{:#?}", span));
-        }
-        pry!(writeln!(std::io::stdout(), "finished receiving spans"));
+        // pry!(writeln!(
+        //     std::io::stdout(),
+        //     "received {} spans on {}",
+        //     scope_spans.iter().count(),
+        //     std::process::id()
+        // ));
+        // for span in scope_spans.iter() {
+        //     pry!(writeln!(std::io::stdout(), "{:#?}", span));
+        // }
+        // pry!(writeln!(std::io::stdout(), "finished receiving spans"));
 
         let response_builder = results.get().init_response();
         let mut partial_success_builder = response_builder.init_partial_success();
