@@ -34,7 +34,7 @@ fn export_spans(c: &mut Criterion) {
     let input = [("small", req_small)];
     let mut group = c.benchmark_group("export spans");
     for (name, req) in input.into_iter() {
-        group.bench_function(format!("export spans {}", name), |b| {
+        group.bench_function(format!("export_spans_{}", name), |b| {
             let exporter = SpanExporter::builder()
                 .with_capnp()
                 .with_endpoint(ENDPOINT)
