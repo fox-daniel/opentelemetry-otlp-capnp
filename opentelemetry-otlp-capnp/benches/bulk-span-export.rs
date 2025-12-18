@@ -54,12 +54,16 @@ fn export_spans(c: &mut Criterion) {
 
 fn span_export_comparison(c: &mut Criterion) {
     let rt = Runtime::new().expect("able to create new runtime");
+    // TODO
+    // Ideally we will run an OTEL collector to receive the spans
+    // from the capnp exporter; could fork rotel.
     let _capnp_span_receiver = SpanReceiver::new(CAPNP_ENDPOINT)
         .start()
         .map_err(|e| format!("Failed to start SpanReceiver: {e}"));
-    let _otlp_span_receiver = SpanReceiver::new(OTLP_ENDPOINT)
-        .start()
-        .map_err(|e| format!("Failed to start SpanReceiver: {e}"));
+    // For the OTLP receiver we run an OTEL collector.
+    // let _otlp_span_receiver = SpanReceiver::new(OTLP_ENDPOINT)
+    //     .start()
+    //     .map_err(|e| format!("Failed to start SpanReceiver: {e}"));
     std::thread::sleep(std::time::Duration::from_millis(100));
     let req_small = FakeCapnp::trace_service_request_with_spans(1);
     let req_medium = FakeCapnp::trace_service_request_with_spans(10);

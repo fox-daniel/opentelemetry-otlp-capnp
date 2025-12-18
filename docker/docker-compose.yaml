@@ -1,0 +1,10 @@
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: otel-collector-benchmark
+    ports:
+      - "4317:4317"  # OTLP gRPC
+      - "4316:4316"  # OTLP HTTP (optional)
+    volumes:
+      - ./benchmark-collector-config.yaml:/etc/otel/config.yaml:ro
+    command: ["--config=/etc/otel/config.yaml"]
