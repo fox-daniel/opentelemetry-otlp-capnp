@@ -936,6 +936,7 @@ dependencies = [
  "futures",
  "opentelemetry",
  "opentelemetry-capnp",
+ "opentelemetry-otlp",
  "opentelemetry_sdk",
  "thiserror",
  "tokio",
