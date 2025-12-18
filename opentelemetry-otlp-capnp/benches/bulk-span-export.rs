@@ -57,8 +57,7 @@ fn export_spans(c: &mut Criterion) {
 fn span_export_comparison(c: &mut Criterion) {
     let rt = Runtime::new().expect("able to create new runtime");
     // TODO
-    // Ideally we will run an OTEL collector to receive the spans
-    // from the capnp exporter; could fork rotel.
+    // check that receivers are doing a similar amount of work
     let _capnp_span_receiver = SpanReceiver::new(CAPNP_ENDPOINT)
         .start()
         .map_err(|e| format!("Failed to start SpanReceiver: {e}"));
