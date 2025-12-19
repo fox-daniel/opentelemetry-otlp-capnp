@@ -1344,6 +1344,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "profile-exporter"
+version = "0.1.0"
+dependencies = [
+ "capnp",
+ "capnp-rpc",
+ "futures",
+ "opentelemetry 0.31.0",
+ "opentelemetry-appender-tracing",
+ "opentelemetry-capnp",
+ "opentelemetry-otlp-capnp",
+ "opentelemetry_sdk 0.31.0",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+ "utilities",
+]
+
+[[package]]
 name = "prost"
 version = "0.12.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"

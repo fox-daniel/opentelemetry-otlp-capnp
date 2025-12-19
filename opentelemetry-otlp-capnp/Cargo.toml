@@ -50,5 +50,10 @@ path = "examples/bulk-capnp"
 name = "bulk-span-export"
 harness = false
 
+[[example]]
+name = "profile-exporter"
+path = "examples/profile-exporter"
+harness = false
+
 [lib]
 bench = false
