@@ -21,30 +21,26 @@ fn span_export_comparison(c: &mut Criterion) {
         .start()
         .expect("Failed to start OTLP receiver");
     std::thread::sleep(std::time::Duration::from_millis(100));
-    let req_small = FakeCapnp::trace_service_request_with_spans(1);
-    let req_medium = FakeCapnp::trace_service_request_with_spans(10);
-    let req_large = FakeCapnp::trace_service_request_with_spans(100);
-    let req_huge = FakeCapnp::trace_service_request_with_spans(1000);
+    let req_single = FakeCapnp::trace_service_request_with_spans(1);
+    let req_small = FakeCapnp::trace_service_request_with_spans(10);
+    let req_medium = FakeCapnp::trace_service_request_with_spans(100);
+    let req_large = FakeCapnp::trace_service_request_with_spans(1000);
     let input: [(&str, SpanRequest); 4] = [
+        ("single", req_single),
         ("small", req_small),
         ("medium", req_medium),
         ("large", req_large),
-        ("huge", req_huge),
     ];
-    let mut group = c.benchmark_group("span export comparison");
+    let mut group = c.benchmark_group("SpanExport");
     let capnp_exporter = SpanExporter::builder()
         .with_capnp()
         .with_endpoint(CAPNP_ENDPOINT)
         .build()
         .expect("build Capnp SpanExporter with endpoint: {ENDPOINT}");
     for (name, req) in input.iter() {
-        group.bench_with_input(
-            BenchmarkId::new("Cap'n Proto span export", name),
-            req,
-            |b, req| {
-                b.iter(|| rt.block_on(async { capnp_exporter.export(req.batch.clone()).await }))
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("CapnP", name), req, |b, req| {
+            b.iter(|| rt.block_on(async { capnp_exporter.export(req.batch.clone()).await }))
+        });
     }
     let otlp_exporter = rt.block_on(async {
         opentelemetry_otlp::SpanExporter::builder()
@@ -54,7 +50,7 @@ fn span_export_comparison(c: &mut Criterion) {
             .expect("build OTLP SpanExporter with endpoint: {ENDPOINT}")
     });
     for (name, req) in input.iter() {
-        group.bench_with_input(BenchmarkId::new("OTLP span export", name), req, |b, req| {
+        group.bench_with_input(BenchmarkId::new("OTLP", name), req, |b, req| {
             b.iter(|| rt.block_on(async { otlp_exporter.export(req.batch.clone()).await }))
         });
     }
