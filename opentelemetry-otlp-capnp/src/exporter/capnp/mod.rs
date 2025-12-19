@@ -12,7 +12,7 @@ use crate::{OTEL_EXPORTER_CAPNP_ENDPOINT, OTEL_EXPORTER_CAPNP_ENDPOINT_DEFAULT};
 // use crate::ExportConfig;
 /// Configuration for [capnp]
 ///
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 #[non_exhaustive]
 pub struct CapnpConfig {
     // The compression algorithm to use when communicating with the collector.
@@ -24,7 +24,7 @@ pub struct CapnpConfig {
     pub(crate) retry_policy: Option<RetryPolicy>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct CapnpExporterBuilder {
     pub(crate) capnp_config: CapnpConfig,
     pub(crate) exporter_config: ExportConfig,

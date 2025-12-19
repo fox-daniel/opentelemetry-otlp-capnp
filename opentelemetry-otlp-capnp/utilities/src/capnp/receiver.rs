@@ -5,8 +5,7 @@ use opentelemetry_capnp::capnp::capnp_rpc::trace_service;
 use std::io::Write;
 use std::net::{SocketAddr, ToSocketAddrs};
 
-/// A Span receiver for Cap'n Proto RPC. This is a sketch and needs to be
-/// developed.
+/// A No-op Span receiver for Cap'n Proto RPC for benchmarking.
 ///
 /// ```rust
 /// // import stuff
@@ -14,7 +13,7 @@ use std::net::{SocketAddr, ToSocketAddrs};
 ///
 /// #[tokio::main]
 /// pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let _span_receiver = SpanReceiver::new()
+///     let _span_receiver = NoOpSpanReceiver::new()
 ///         .start()
 ///         .map_err(|e| format!("Failed to start SpanReceiver: {e}"))?;
 ///
@@ -22,13 +21,11 @@ use std::net::{SocketAddr, ToSocketAddrs};
 ///     Ok(())
 /// }
 /// ```
-pub struct SpanReceiver {
+pub struct NoOpSpanReceiver {
     addr: SocketAddr,
 }
 
-/// To demonstrate using Cap'n Proto over the wire we need a receiver that
-/// can handle Cap'n Proto client requests. This is a mini-server that does that.
-impl SpanReceiver {
+impl NoOpSpanReceiver {
     pub fn new(addr: &str) -> Self {
         let addr = addr
             .to_socket_addrs()
@@ -39,11 +36,6 @@ impl SpanReceiver {
     }
 
     pub fn start(self) -> std::io::Result<std::thread::JoinHandle<()>> {
-        // TODO
-        // integrate into the OTEL API/SDK. There appears to be no SpanReceiver!
-        //
-        // TODO
-        // this uses the minimal span_export interface; implement the full trace_service interface.
         let handle = std::thread::spawn(move || {
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
@@ -73,31 +65,14 @@ impl SpanReceiver {
 ///
 /// Capabilities of the server are implemented from the
 /// perspective of the client calling those capabilities.
-impl trace_service::Server for SpanReceiver {
+impl trace_service::Server for NoOpSpanReceiver {
     fn export(
         self: std::rc::Rc<Self>,
         params: trace_service::ExportParams,
         mut results: trace_service::ExportResults,
     ) -> impl futures::Future<Output = Result<(), capnp::Error>> + 'static {
-        let request = pry!(params.get());
-        let request_data = pry!(request.get_request());
-        let resource_spans = pry!(request_data.get_resource_spans());
-        let first_resource_span = resource_spans.get(0);
-        let scope_spans = first_resource_span.get_scope_spans();
-        pry!(writeln!(
-            std::io::stdout(),
-            "received {} spans on {}",
-            scope_spans.iter().count(),
-            std::process::id()
-        ));
-        for span in scope_spans.iter() {
-            pry!(writeln!(std::io::stdout(), "{:#?}", span));
-        }
-        pry!(writeln!(std::io::stdout(), "finished receiving spans"));
-
         let response_builder = results.get().init_response();
         let mut partial_success_builder = response_builder.init_partial_success();
-        // This needs to be calculated instead of set arbitrarily!
         let num_rejected_spans = 0;
         partial_success_builder
             .reborrow()

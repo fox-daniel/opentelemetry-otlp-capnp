@@ -20,7 +20,7 @@ pub const OTEL_EXPORTER_CAPNP_TIMEOUT_DEFAULT: Duration = Duration::from_millis(
 
 pub(crate) mod capnp;
 /// Configuration for the CAPNP exporter.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ExportConfig {
     /// The address of the CAPNP collector.
     /// Default address will be used based on the protocol.

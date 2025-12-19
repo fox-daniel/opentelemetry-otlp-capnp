@@ -132,6 +132,12 @@ impl CapnpMessageClient {
     // should boot up in unconnected state and be able to cache span data
     // when are able to connect, then do so and start exporting
     // need to handle disconnect and cache full
+    // TODO
+    // handle errors for
+    // - mpsc channel creation
+    // - endpoint parsing
+    // - spawning current thread
+    // - etc
     pub fn new(endpoint: &SocketAddr) -> Self {
         // switch to bounded channels; careful to not have channel-loops
         let (tx_export, rx_export) =
@@ -148,7 +154,7 @@ impl CapnpMessageClient {
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
-                .unwrap();
+                .expect("Should be able to create a current thread runtime.");
 
             let local = LocalSet::new();
 

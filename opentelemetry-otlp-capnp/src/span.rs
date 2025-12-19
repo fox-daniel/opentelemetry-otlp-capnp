@@ -44,7 +44,7 @@ impl SpanExporterBuilder<CapnpExporterBuilderSet> {
     /// Build the [SpanExporter] with the Cap'n Proto transport.
     pub fn build(self) -> Result<SpanExporter, ExporterBuildError> {
         let span_exporter = self.client.0.build_span_exporter()?;
-        opentelemetry::otel_debug!(name: "SpanExporterBuilt");
+        // opentelemetry::otel_debug!(name: "SpanExporterBuilt");
         Ok(span_exporter)
     }
 }
@@ -70,12 +70,12 @@ impl HasCapnpConfig for SpanExporterBuilder<CapnpExporterBuilderSet> {
 /// The change is required for Cap'n Proto because the Cap'n Proto SpanExporter
 /// is not Send. The Cap'n Proto RPC client used to export SpanData
 /// is placed on a dedicated thread and all SpanData is sent to it
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SpanExporter {
     client: SupportedTransportClient,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum SupportedTransportClient {
     Capnp(CapnpTracesClient),
 }

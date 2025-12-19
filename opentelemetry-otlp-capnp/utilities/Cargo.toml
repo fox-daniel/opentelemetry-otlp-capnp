@@ -1,0 +1,17 @@
+[package]
+name = "utilities"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+opentelemetry-otlp-capnp = { path = ".."}
+opentelemetry-capnp = { path = "../../opentelemetry-capnp" }
+opentelemetry_sdk.workspace = true
+opentelemetry.workspace = true
+tonic = "0.11"
+opentelemetry-proto = { version = "0.6", features = ["gen-tonic", "trace"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+tokio-util.workspace = true
+capnp.workspace = true
+capnp-rpc.workspace = true
+futures.workspace = true
