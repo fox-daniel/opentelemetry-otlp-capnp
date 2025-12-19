@@ -2109,12 +2109,16 @@ checksum = "b6c140620e7ffbb22c2dee59cafe6084a59b5ffc27a8859a5f0d494b5d52b6be"
 name = "utilities"
 version = "0.0.1"
 dependencies = [
+ "capnp",
+ "capnp-rpc",
+ "futures",
  "opentelemetry 0.31.0",
  "opentelemetry-capnp",
  "opentelemetry-otlp-capnp",
  "opentelemetry-proto 0.6.0",
  "opentelemetry_sdk 0.31.0",
  "tokio",
+ "tokio-util",
  "tonic 0.11.0",
 ]
 
