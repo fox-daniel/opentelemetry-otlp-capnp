@@ -232,11 +232,10 @@ async fn export_batch(
     client: &trace_service::Client,
     span_request: SpanRequest,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let resource_spans = group_spans_by_resource_and_scope(span_request);
+    let mut resource_spans = group_spans_by_resource_and_scope(span_request);
+    let resource: Arc<Resource> = resource_spans[0].resource.clone();
     // currently assuming that group_spans_by_resource_and_scope returns a vec of length 1
     // with a single resource
-    let resource_spans = resource_spans[0].clone();
-    let resource: Arc<Resource> = resource_spans.resource.clone();
     let mut request = client.export_request();
     {
         let export_trace_service_request_builder = request.get().init_request();
@@ -248,12 +247,13 @@ async fn export_batch(
             let resource_builder = builder_for_resource_spans.reborrow().init_resource();
             populate_resource(resource_builder, resource)?;
         }
-        let scope_spans_collection: Vec<ScopeSpans> = resource_spans.scope_spans;
+        // let scope_spans_collection: Vec<ScopeSpans> = resource_spans[0].scope_spans;
+        let scope_spans_collection_length = resource_spans[0].scope_spans.len();
         let mut scope_spans_builder = builder_for_resource_spans
             .reborrow()
-            .init_scope_spans(scope_spans_collection.len() as u32);
+            .init_scope_spans(scope_spans_collection_length as u32);
         {
-            for (idx, scope_spans) in scope_spans_collection.into_iter().enumerate() {
+            for (idx, scope_spans) in resource_spans[0].scope_spans.drain(0..1).enumerate() {
                 let builder_for_scope_spans = scope_spans_builder.reborrow().get(idx as u32);
                 populate_scope_spans(builder_for_scope_spans, scope_spans)?;
             }

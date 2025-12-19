@@ -7,6 +7,7 @@ members = [
     "opentelemetry-otlp-capnp/examples/basic-capnp",
     "opentelemetry-otlp-capnp/examples/bulk-capnp",
     "opentelemetry-otlp-capnp/utilities",
+    "opentelemetry-otlp-capnp/examples/profile-exporter",
 ]
 resolver = "2"
 
