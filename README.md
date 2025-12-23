@@ -2,7 +2,7 @@
 
 This workspace is for developing OpenTelemetry Exporters and Receivers that use
 Cap'n Proto in place of ProtoBuf and gRPC for OpenTelemetry. Cap'n Proto should provide
-performance gains both in terms of speed and memory use. Preliminary benchmarks show that
+performance gains both in terms of speed and memory usage. Preliminary benchmarks show that
 exporting Spans is almost 2x times faster. Even greater gains are expected on the receiver side. 
 
 
