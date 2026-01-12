@@ -1,4 +1,4 @@
-use opentelemetry_otlp_capnp::{SpanExporter, SpanReceiver, WithExportConfig as _};
+use opentelemetry_otlp_capnp::{SpanExporter, WithExportConfig as _};
 use opentelemetry_sdk::trace::SpanExporter as _;
 use utilities::capnp::{receiver::NoOpSpanReceiver, span::FakeCapnp};
 
