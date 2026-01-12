@@ -8,17 +8,15 @@ use std::net::{SocketAddr, ToSocketAddrs};
 /// A Span receiver for Cap'n Proto RPC. This is a sketch and needs to be
 /// developed.
 ///
-/// ```rust
-/// // import stuff
+/// ```rust, no_run
+/// use opentelemetry_otlp_capnp::SpanReceiver;
 /// const TEST_ADDRESS: &str = "127.0.0.1:8080";
 ///
 /// #[tokio::main]
 /// pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let _span_receiver = SpanReceiver::new()
+///     let span_receiver = SpanReceiver::new(TEST_ADDRESS)
 ///         .start()
 ///         .map_err(|e| format!("Failed to start SpanReceiver: {e}"))?;
-///
-///     tokio::signal::ctrl_c().await?;
 ///     Ok(())
 /// }
 /// ```

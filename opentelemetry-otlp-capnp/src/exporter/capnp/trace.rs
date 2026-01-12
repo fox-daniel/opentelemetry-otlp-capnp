@@ -43,6 +43,7 @@ pub const SPAN_EXPORTER_SHUTDOWN_CHANNEL_BUFFER_SIZE: usize = 256;
 pub const CAPNP_EXPORTER_RPC_TRACES_TIMEOUT: u64 = 10;
 
 #[derive(Clone)]
+#[allow(dead_code)]
 pub(crate) struct CapnpTracesClient {
     inner: Option<ClientInner>,
     retry_policy: RetryPolicy,
@@ -73,6 +74,7 @@ struct ClientInner {
 }
 
 #[derive(Clone)]
+#[allow(dead_code)]
 struct CapnpMessageClient {
     // TODO
     // make this generic over the channel so that flume can also be used

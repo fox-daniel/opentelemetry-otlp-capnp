@@ -30,26 +30,6 @@ utilities = { path = "utilities" }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
 opentelemetry-otlp = { version = "0.31", features = [ "trace", "grpc-tonic" ] }
 
-[[example]]
-name = "basic-otlp"
-path = "examples/basic-otlp"
-
-[[example]]
-name = "basic-otlp-trace"
-path = "examples/basic-otlp-trace"
-
-[[example]]
-name = "basic-capnp"
-path = "examples/basic-capnp"
-
-[[example]]
-name = "bulk-capnp"
-path = "examples/bulk-capnp"
-
-[[example]]
-name = "profile-exporter"
-path = "examples/profile-exporter"
-
 [[bench]]
 name = "bulk-span-export"
 harness = false

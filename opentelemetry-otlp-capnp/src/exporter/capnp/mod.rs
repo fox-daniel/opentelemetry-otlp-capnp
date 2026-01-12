@@ -31,6 +31,7 @@ pub struct CapnpExporterBuilder {
 }
 
 // Expose interface for modifying [CapnpConfig] fields within the exporter builders.
+#[allow(dead_code)]
 pub trait HasCapnpConfig {
     /// Return a mutable reference to the export config within the exporter builders.
     fn capnp_config(&mut self) -> &mut CapnpConfig;
@@ -44,7 +45,7 @@ impl HasCapnpConfig for CapnpExporterBuilder {
 }
 
 impl CapnpExporterBuilder {
-    /// Build a new tonic span exporter
+    /// Build a new capnp span exporter
     pub(crate) fn build_span_exporter(self) -> Result<crate::SpanExporter, ExporterBuildError> {
         use crate::exporter::capnp::trace::CapnpTracesClient;
 

@@ -110,8 +110,6 @@ fn default_protocol() -> Protocol {
 
 /// Expose methods to override [ExportConfig].
 ///
-/// This trait will be implemented for every struct that implemented [`HasExportConfig`] trait.
-///
 /// ## Examples
 /// ```
 /// # #[cfg(all(feature = "trace", feature = "rpc-capnp"))]

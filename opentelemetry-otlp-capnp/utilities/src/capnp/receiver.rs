@@ -1,23 +1,20 @@
 use capnp::capability::Promise;
-use capnp_rpc::{pry, rpc_twoparty_capnp, twoparty, RpcSystem};
+use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
 use futures::io::AsyncReadExt;
 use opentelemetry_capnp::capnp::capnp_rpc::trace_service;
-use std::io::Write;
 use std::net::{SocketAddr, ToSocketAddrs};
 
 /// A No-op Span receiver for Cap'n Proto RPC for benchmarking.
 ///
 /// ```rust
-/// // import stuff
+/// use utilities::capnp::receiver::NoOpSpanReceiver;
 /// const TEST_ADDRESS: &str = "127.0.0.1:8080";
 ///
 /// #[tokio::main]
 /// pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let _span_receiver = NoOpSpanReceiver::new()
+///     let _span_receiver = NoOpSpanReceiver::new(TEST_ADDRESS)
 ///         .start()
 ///         .map_err(|e| format!("Failed to start SpanReceiver: {e}"))?;
-///
-///     tokio::signal::ctrl_c().await?;
 ///     Ok(())
 /// }
 /// ```
@@ -68,7 +65,7 @@ impl NoOpSpanReceiver {
 impl trace_service::Server for NoOpSpanReceiver {
     fn export(
         self: std::rc::Rc<Self>,
-        params: trace_service::ExportParams,
+        _params: trace_service::ExportParams,
         mut results: trace_service::ExportResults,
     ) -> impl futures::Future<Output = Result<(), capnp::Error>> + 'static {
         let response_builder = results.get().init_response();

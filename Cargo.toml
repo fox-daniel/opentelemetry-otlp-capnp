@@ -9,6 +9,13 @@ members = [
     "opentelemetry-otlp-capnp/utilities",
     "opentelemetry-otlp-capnp/examples/profile-exporter",
 ]
+
+default-members = [
+    "opentelemetry-otlp-capnp",
+    "opentelemetry-capnp",
+    "opentelemetry-otlp-capnp/utilities",
+]
+
 resolver = "2"
 
 [workspace.dependencies]
