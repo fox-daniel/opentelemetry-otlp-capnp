@@ -1,0 +1,153 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Cache Cap'n Proto
+        id: cache-capnp
+        uses: actions/cache@v6
+        with:
+          path: ~/capnproto
+          key: capnp-1.2.0-${{ runner.os }}
+      
+      - name: Install Cap'n Proto
+        if: steps.cache-capnp.outputs.cache-hit != 'true'
+        run: |
+          curl -O https://capnproto.org/capnproto-c++-1.2.0.tar.gz
+          tar zxf capnproto-c++-1.2.0.tar.gz
+          cd capnproto-c++-1.2.0
+          ./configure --prefix=$HOME/capnproto
+          make -j$(nproc) check
+          make install
+          cd ..
+          rm -rf capnproto-c++-1.2.0*
+      
+      - name: Add Cap'n Proto to PATH
+        run: echo "$HOME/capnproto/bin" >> $GITHUB_PATH
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --workspace --all-features
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Cache Cap'n Proto
+        id: cache-capnp
+        uses: actions/cache@v6
+        with:
+          path: ~/capnproto
+          key: capnp-1.2.0-${{ runner.os }}
+      
+      - name: Install Cap'n Proto
+        if: steps.cache-capnp.outputs.cache-hit != 'true'
+        run: |
+          curl -O https://capnproto.org/capnproto-c++-1.2.0.tar.gz
+          tar zxf capnproto-c++-1.2.0.tar.gz
+          cd capnproto-c++-1.2.0
+          ./configure --prefix=$HOME/capnproto
+          make -j$(nproc) check
+          make install
+          cd ..
+          rm -rf capnproto-c++-1.2.0*
+      
+      - name: Add Cap'n Proto to PATH
+        run: echo "$HOME/capnproto/bin" >> $GITHUB_PATH
+        
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --workspace --all-features -- -D warnings
+
+  fmt:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --check
+
+  docs:
+    name: Docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      
+      - name: Cache Cap'n Proto
+        id: cache-capnp
+        uses: actions/cache@v6
+        with:
+          path: ~/capnproto
+          key: capnp-1.2.0-${{ runner.os }}
+      
+      - name: Install Cap'n Proto
+        if: steps.cache-capnp.outputs.cache-hit != 'true'
+        run: |
+          curl -O https://capnproto.org/capnproto-c++-1.2.0.tar.gz
+          tar zxf capnproto-c++-1.2.0.tar.gz
+          cd capnproto-c++-1.2.0
+          ./configure --prefix=$HOME/capnproto
+          make -j$(nproc) check
+          make install
+          cd ..
+          rm -rf capnproto-c++-1.2.0*
+      
+      - name: Add Cap'n Proto to PATH
+        run: echo "$HOME/capnproto/bin" >> $GITHUB_PATH
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo doc --workspace --no-deps --all-features
+        env:
+          RUSTDOCFLAGS: -D warnings
+
+  msrv:
+    name: MSRV (1.75)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      
+      - name: Cache Cap'n Proto
+        id: cache-capnp
+        uses: actions/cache@v6
+        with:
+          path: ~/capnproto
+          key: capnp-1.2.0-${{ runner.os }}
+      
+      - name: Install Cap'n Proto
+        if: steps.cache-capnp.outputs.cache-hit != 'true'
+        run: |
+          curl -O https://capnproto.org/capnproto-c++-1.2.0.tar.gz
+          tar zxf capnproto-c++-1.2.0.tar.gz
+          cd capnproto-c++-1.2.0
+          ./configure --prefix=$HOME/capnproto
+          make -j$(nproc) check
+          make install
+          cd ..
+          rm -rf capnproto-c++-1.2.0*
+      
+      - name: Add Cap'n Proto to PATH
+        run: echo "$HOME/capnproto/bin" >> $GITHUB_PATH
+
+      - uses: dtolnay/rust-toolchain@1.75
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --workspace
