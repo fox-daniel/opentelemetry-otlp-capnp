@@ -20,7 +20,7 @@ fn get_resource() -> Resource {
     RESOURCE
         .get_or_init(|| {
             Resource::builder()
-                .with_service_name("basic-otlp-example-grpc")
+                .with_service_name("basic-otlp-capnp-example")
                 .build()
         })
         .clone()
@@ -40,11 +40,12 @@ fn init_traces() -> io::Result<SdkTracerProvider> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error + Send + Sync + 'static>> {
+    // Normally the SpanReceiver would run in a different process, often
+    // in a different VM or machine.
     let _span_receiver = SpanReceiver::new(TEST_ADDRESS)
         .start()
         .map_err(|e| format!("Failed to start SpanReceiver: {e}"))?;
 
-    tokio::signal::ctrl_c().await?;
     let tracer_provider = init_traces()?;
     global::set_tracer_provider(tracer_provider.clone());
 
