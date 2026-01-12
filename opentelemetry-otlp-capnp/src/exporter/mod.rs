@@ -105,9 +105,7 @@ impl HasExportConfig for CapnpExporterBuilder {
 
 /// default protocol based on enabled features
 fn default_protocol() -> Protocol {
-    match OTEL_EXPORTER_CAPNP_PROTOCOL_DEFAULT {
-        _ => Protocol::Capnp,
-    }
+    Protocol::Capnp
 }
 
 /// Expose methods to override [ExportConfig].
