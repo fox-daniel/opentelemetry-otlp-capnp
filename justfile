@@ -13,5 +13,7 @@ install-capnp:
 
     cd capnproto-c++-{{capnp-version}} && \
       ./configure && \
-      make -j6 check && \
+      make -j$(nproc) check && \
       sudo make install
+
+    rm -rf capnproto-c++-{{capnp-version}}
