@@ -11,7 +11,6 @@ use opentelemetry_sdk::{
 };
 
 use crate::connect_with_retry;
-use crate::ShutDown;
 use futures::io::AsyncReadExt;
 use opentelemetry_capnp::{
     capnp::capnp_rpc::trace_service,
@@ -39,7 +38,6 @@ pub const SPAN_EXPORTER_TIMEOUT: u64 = 30_000;
 /// Span size = 2KB
 /// Max memory footprint for buffer: SpanSize x BatchSize x BufferSize = 2KB x 512 x 32 ~ 32MB
 pub const SPAN_EXPORTER_MPSC_CHANNEL_BUFFER_SIZE: usize = 32;
-pub const SPAN_EXPORTER_SHUTDOWN_CHANNEL_BUFFER_SIZE: usize = 256;
 pub const CAPNP_EXPORTER_RPC_TRACES_TIMEOUT: u64 = 10;
 
 #[derive(Clone)]
@@ -79,7 +77,6 @@ struct CapnpMessageClient {
     // TODO
     // make this generic over the channel so that flume can also be used
     tx_export: tokio::sync::mpsc::Sender<SpanRequest>,
-    tx_shutdown: tokio::sync::mpsc::Sender<ShutDown>,
 }
 
 impl fmt::Debug for CapnpTracesClient {
@@ -144,7 +141,6 @@ impl CapnpMessageClient {
         // switch to bounded channels; careful to not have channel-loops
         let (tx_export, rx_export) =
             mpsc::channel::<SpanRequest>(SPAN_EXPORTER_MPSC_CHANNEL_BUFFER_SIZE);
-        let (tx_shutdown, rx_shutdown) = mpsc::channel(SPAN_EXPORTER_SHUTDOWN_CHANNEL_BUFFER_SIZE);
 
         let addr = endpoint
             .to_socket_addrs()
@@ -173,13 +169,10 @@ impl CapnpMessageClient {
                     rpc_system.bootstrap(rpc_twoparty_capnp::Side::Server);
                 tokio::task::spawn_local(rpc_system);
 
-                export_loop(client, rx_export, rx_shutdown).await;
+                export_loop(client, rx_export).await;
             });
         });
-        Self {
-            tx_export,
-            tx_shutdown,
-        }
+        Self { tx_export }
     }
 }
 
@@ -197,11 +190,7 @@ fn build_capnp_rpc_system(stream: TcpStream) -> RpcSystem<twoparty::VatId> {
     RpcSystem::new(rpc_network, None)
 }
 
-async fn export_loop(
-    client: trace_service::Client,
-    mut rx_export: mpsc::Receiver<SpanRequest>,
-    mut rx_shutdown: mpsc::Receiver<ShutDown>,
-) {
+async fn export_loop(client: trace_service::Client, mut rx_export: mpsc::Receiver<SpanRequest>) {
     loop {
         tokio::select! {
             // The recv method is cancel safe: if the other branch completes first,
@@ -210,13 +199,6 @@ async fn export_loop(
                 if let Err(e) = export_batch(&client, span_request).await {
                     let _ = writeln!(io::stdout(), "Export failed: {}", e);
                 }
-            },
-            Some(ShutDown) = rx_shutdown.recv() => {
-                rx_export.close();
-                while let Ok(span_request) = rx_export.try_recv() {
-                    let _ = export_batch(&client, span_request).await;
-                }
-                break;
             },
             else => { break;}
         }
