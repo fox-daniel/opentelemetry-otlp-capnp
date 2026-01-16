@@ -143,6 +143,6 @@ jobs:
       - name: Add Cap'n Proto to PATH
         run: echo "$HOME/capnproto/bin" >> $GITHUB_PATH
 
-      - uses: dtolnay/rust-toolchain@1.81
+      - uses: dtolnay/rust-toolchain@1.83
       - uses: Swatinem/rust-cache@v2
       - run: cargo check --workspace
