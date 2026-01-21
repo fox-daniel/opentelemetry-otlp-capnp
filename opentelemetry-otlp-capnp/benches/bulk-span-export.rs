@@ -1,5 +1,5 @@
 use criterion::Criterion;
-use criterion::{criterion_group, criterion_main, BenchmarkId};
+use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId};
 use opentelemetry_capnp::transform::trace::SpanRequest;
 use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_otlp_capnp::{SpanExporter, WithExportConfig as _};
@@ -39,7 +39,11 @@ fn span_export_comparison(c: &mut Criterion) {
         .expect("build Capnp SpanExporter with endpoint: {ENDPOINT}");
     for (name, req) in input.iter() {
         group.bench_with_input(BenchmarkId::new("CapnP", name), req, |b, req| {
-            b.iter(|| rt.block_on(async { capnp_exporter.export(req.batch.clone()).await }))
+            b.iter_batched(
+                || req.batch.clone(),
+                |data| rt.block_on(async { capnp_exporter.export(data).await }),
+                BatchSize::PerIteration,
+            )
         });
     }
     let otlp_exporter = rt.block_on(async {
@@ -51,7 +55,11 @@ fn span_export_comparison(c: &mut Criterion) {
     });
     for (name, req) in input.iter() {
         group.bench_with_input(BenchmarkId::new("OTLP", name), req, |b, req| {
-            b.iter(|| rt.block_on(async { otlp_exporter.export(req.batch.clone()).await }))
+            b.iter_batched(
+                || req.batch.clone(),
+                |data| rt.block_on(async { otlp_exporter.export(data).await }),
+                BatchSize::PerIteration,
+            )
         });
     }
     group.finish();
